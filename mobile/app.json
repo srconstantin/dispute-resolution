@@ -1,0 +1,10 @@
+{
+  "expo": {
+    "name": "Dispute App",
+    "slug": "dispute-app",
+    "version": "1.0.0",
+    "platforms": ["ios", "android"],
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+  }
+}
