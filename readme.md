@@ -17,6 +17,7 @@
 
 ## What it does today
 --signup, login, homepage
+
 --saves user info to sqlite database
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
