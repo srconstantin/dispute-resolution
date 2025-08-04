@@ -1,6 +1,4 @@
-# Simple Dispute App - Signup Only
 
-This is the simplest version of the dispute app that only handles user signup.
 
 ## Setup Instructions
 
@@ -17,15 +15,8 @@ This is the simplest version of the dispute app that only handles user signup.
 4. Start app: `npm start`
 5. Use Expo Go app to scan QR code
 
-## What it does
-- Shows a signup form with name, email, password fields
-- Validates input on both frontend and backend
-- Hashes passwords before storing
-- Creates user accounts in SQLite database
-- Returns JWT token for authentication
-- Shows success/error messages
+## What it does today
+--signup, login, homepage
+--saves user info to sqlite database
 
-## Next steps
-- Add login functionality
-- Add contact management
-- Add dispute creation
+This is a work in progress, with heavy assistance from Claude (Sonnet 4).
