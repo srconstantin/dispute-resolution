@@ -16,6 +16,19 @@ const initDatabase = () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+      db.run(`
+      CREATE TABLE IF NOT EXISTS contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        requester_id INTEGER NOT NULL,
+        recipient_id INTEGER,
+        recipient_email TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'accepted', 'rejected'
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (requester_id) REFERENCES users (id),
+        FOREIGN KEY (recipient_id) REFERENCES users (id)
+      )
+    `);
   });
 };
 
