@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { createUser, getUserByEmail } = require('../database');
 
 const router = express.Router();
-const JWT_SECRET = 'your-secret-key'; // In production, use environment variable
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
 
 // Sign up route
 router.post('/signup', async (req, res) => {

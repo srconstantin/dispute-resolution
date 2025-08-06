@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const { getUserContacts, createContactRequest, updateContactRequest, getUserByEmail } = require('../database');
 
 const router = express.Router();
-const JWT_SECRET = 'your-secret-key'; // Should match your auth.js
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
 
 // Middleware to verify JWT token
 const authenticateToken = (req, res, next) => {
