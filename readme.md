@@ -16,8 +16,10 @@
 5. Use Expo Go app to scan QR code
 
 ## What it does today
---signup, login, homepage
+--signup, login, homepage, contacts
 
---saves user info to sqlite database
+--allows users to make, accept, and reject contact requests
+
+--saves user info and contact info to sqlite database
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
