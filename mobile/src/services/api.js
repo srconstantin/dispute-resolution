@@ -46,13 +46,24 @@ export const loginUser = async (userData) => {
 
 export const getContacts = async (token) => {
   try {
-    const response = await fetch(`${API_URL}/contacts`, {
+    const url = `${API_URL}/contacts`;
+    console.log('Making request to:', url);
+    console.log('With token:', token);
+
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+
+    const responseText = await response.text();
+    console.log('Raw response': responseText);
+    
 
     const data = await response.json();
 
