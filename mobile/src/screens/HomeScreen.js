@@ -6,26 +6,25 @@ import {
   StyleSheet,
   SafeAreaView
 } from 'react-native';
-
-const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
-
-useEffect(() => {
-  const checkPendingRequests = async () => {
-    try {
-      const data = await getContacts(token);
-      setPendingRequestsCount(data.pendingRequests?.length || 0);
-    } catch (error) {
-      console.log('Error checking pending requests:', error);
-    }
-  };
-
-  checkPendingRequests();
-    // Could set up interval to check periodically
-}, [token]);
-
-
+import { getContacts } from '../services/api';
 
 export default function HomeScreen({ user, onLogout }) {
+
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  
+  useEffect(() => {
+    const checkPendingRequests = async () => {
+      try {
+        const data = await getContacts(token);
+        setPendingRequestsCount(data.pendingRequests?.length || 0);
+      } catch (error) {
+        console.log('Error checking pending requests:', error);
+      }
+    };
+
+    checkPendingRequests();
+  }, [token]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
