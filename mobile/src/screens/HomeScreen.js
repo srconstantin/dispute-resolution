@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,24 @@ import {
   StyleSheet,
   SafeAreaView
 } from 'react-native';
+
+const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+
+useEffect(() => {
+  const checkPendingRequests = async () => {
+    try {
+      const data = await getContacts(token);
+      setPendingRequestsCount(data.pendingRequests?.length || 0);
+    } catch (error) {
+      console.log('Error checking pending requests:', error);
+    }
+  };
+
+  checkPendingRequests();
+    // Could set up interval to check periodically
+}, [token]);
+
+
 
 export default function HomeScreen({ user, onLogout }) {
   return (
@@ -22,6 +40,20 @@ export default function HomeScreen({ user, onLogout }) {
           <Text style={styles.placeholderText}>• View your disputes</Text>
           <Text style={styles.placeholderText}>• Settings</Text>
         </View>
+
+        <TouchableOpacity 
+          style={styles.contactsButton} 
+          onPress={onNavigateToContacts}
+        >
+          <View style={styles.contactsButtonContent}>
+            <Text style={styles.contactsButtonText}>Contacts</Text>
+            {pendingRequestsCount > 0 && (
+              <View style={styles.redDot}>
+                <Text style={styles.redDotText}>{pendingRequestsCount}</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Log Out</Text>
@@ -89,5 +121,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  contactsButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  contactsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contactsButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  redDot: {
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  redDotText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });
