@@ -3,11 +3,14 @@ import { StyleSheet, SafeAreaView, AppRegistry } from 'react-native';
 import SignupScreen from './src/screens/SignupScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ContactsScreen from './src/screens/ContactsScreen';
 
 function App() {
-  const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home'
+  const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home', 'contacts'
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+
+
 
   const handleSignupSuccess = (userData, userToken) => {
     setUser(userData);
@@ -35,6 +38,14 @@ function App() {
     setCurrentScreen('signup');
   };
 
+  const handleNavigateToContacts = () => {
+    setCurrentScreen('contacts');
+  };
+
+  const handleBackToHome = () => {
+    setCurrentScreen('home');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {currentScreen === 'signup' && (
@@ -49,10 +60,19 @@ function App() {
           onSwitchToSignup={switchToSignup}
         />
       )}
+      
       {currentScreen === 'home' && (
         <HomeScreen 
           user={user}
+          token={token}
           onLogout={handleLogout}
+          onNavigateToContacts={handleNavigateToContacts}
+        />
+      )}
+      {currentScreen === 'contacts' && (
+        <ContactsScreen 
+          token={token}
+          onBack={handleBackToHome}
         />
       )}
     </SafeAreaView>
