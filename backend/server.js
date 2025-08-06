@@ -5,7 +5,7 @@ const cors = require('cors');
 const { initDatabase } = require('./database');
 const authRoutes = require('./routes/auth');
 const contactsRoutes = require('./routes/contacts');
-app.use('/api/contacts', contactsRoutes);
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,11 +14,14 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+
+
 // Initialize database
 initDatabase();
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/contacts', contactsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
