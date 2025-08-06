@@ -54,8 +54,124 @@ const getUserByEmail = (email, callback) => {
   db.get('SELECT * FROM users WHERE email = ?', [email], callback);
 };
 
+const createContactRequest = (requesterEmail, recipientEmail, callback) => {
+  // First, get the requester ID
+  getUserByEmail(requesterEmail, (err, requester) => {
+    if (err || !requester) {
+      return callback(err || new Error('Requester not found'), null);
+    }
+
+    // Check if recipient exists
+    getUserByEmail(recipientEmail, (err, recipient) => {
+      if (err) {
+        return callback(err, null);
+      }
+
+      const stmt = db.prepare(`
+        INSERT INTO contacts (requester_id, recipient_id, recipient_email, status) 
+        VALUES (?, ?, ?, 'pending')
+      `);
+      
+      stmt.run(
+        requester.id, 
+        recipient ? recipient.id : null, 
+        recipientEmail, 
+        function(err) {
+          if (err) {
+            callback(err, null);
+          } else {
+            callback(null, { 
+              id: this.lastID, 
+              requesterEmail, 
+              recipientEmail,
+              recipientExists: !!recipient,
+              status: 'pending'
+            });
+          }
+        }
+      );
+      
+      stmt.finalize();
+    });
+  });
+};
+
+const getUserContacts = (userEmail, callback) => {
+  getUserByEmail(userEmail, (err, user) => {
+    if (err || !user) {
+      return callback(err || new Error('User not found'), null);
+    }
+
+    // Get accepted contacts (where user is either requester or recipient)
+    db.all(`
+      SELECT 
+        c.id,
+        c.status,
+        c.created_at,
+        CASE 
+          WHEN c.requester_id = ? THEN ru.name 
+          ELSE rq.name 
+        END as contact_name,
+        CASE 
+          WHEN c.requester_id = ? THEN ru.email 
+          ELSE rq.email 
+        END as contact_email
+      FROM contacts c
+      LEFT JOIN users rq ON c.requester_id = rq.id
+      LEFT JOIN users ru ON c.recipient_id = ru.id
+      WHERE (c.requester_id = ? OR c.recipient_id = ?) 
+        AND c.status = 'accepted'
+    `, [user.id, user.id, user.id, user.id], (err, contacts) => {
+      if (err) {
+        return callback(err, null);
+      }
+
+      // Get pending requests where this user is the recipient
+      db.all(`
+        SELECT 
+          c.id,
+          c.status,
+          c.created_at,
+          rq.name as requester_name,
+          rq.email as requester_email
+        FROM contacts c
+        JOIN users rq ON c.requester_id = rq.id
+        WHERE c.recipient_id = ? AND c.status = 'pending'
+      `, [user.id], (err, pendingRequests) => {
+        if (err) {
+          return callback(err, null);
+        }
+
+        callback(null, { contacts, pendingRequests });
+      });
+    });
+  });
+};
+
+const updateContactRequest = (requestId, status, callback) => {
+  const stmt = db.prepare(`
+    UPDATE contacts 
+    SET status = ?, updated_at = CURRENT_TIMESTAMP 
+    WHERE id = ?
+  `);
+  
+  stmt.run(status, requestId, function(err) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, { id: requestId, status, updated: this.changes > 0 });
+    }
+  });
+  
+  stmt.finalize();
+};
+
+// Update the module.exports to include new functions:
 module.exports = {
   initDatabase,
   createUser,
-  getUserByEmail
+  getUserByEmail,
+  createContactRequest,
+  getUserContacts,
+  updateContactRequest
 };
