@@ -22,4 +22,8 @@
 
 --saves user info and contact info to sqlite database
 
+TODO:
+Send invite emails to invited contacts
+add dispute functionality
+
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
