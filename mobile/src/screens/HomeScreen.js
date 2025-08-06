@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { getContacts } from '../services/api';
 
-export default function HomeScreen({ user, onLogout }) {
+export default function HomeScreen({ user, token, onLogout, onNavigateToContacts }) {
 
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   
