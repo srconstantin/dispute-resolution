@@ -62,8 +62,8 @@ export const getContacts = async (token) => {
     console.log('Response headers:', response.headers);
 
     const responseText = await response.text();
-    console.log('Raw response': responseText);
-    
+    console.log('Raw response:', responseText);
+
 
     const data = await response.json();
 
