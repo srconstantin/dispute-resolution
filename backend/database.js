@@ -137,23 +137,26 @@ const createDispute = (disputeData, callback) => {
                 callback(err, null);
                 return;
               }
-            completed++
-            if (completed === participant_ids.length && !hasError){
-              db.run('COMMIT');
-              callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
-            }
-          });
-        });
 
-        participantStmt.finalize();
-    }   else {
-        db.run('COMMIT');
-        callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
-      }  
-    
+              completed++
+              if (completed === participant_ids.length && !hasError){
+                db.run('COMMIT');
+                callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
+              }
+            });
+          });
+
+          participantStmt.finalize();
+        } else {
+          db.run('COMMIT');
+          callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
+        }  
+      });
+
+      creatorStmt.finalize();
     });
 
-    creatorStmt.finalize();
+    stmt.finalize();
   });
 };
 
