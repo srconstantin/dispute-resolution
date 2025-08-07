@@ -16,7 +16,8 @@ const initDatabase = () => {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-      db.run(`
+    // create contacts table 
+    db.run(`
       CREATE TABLE IF NOT EXISTS contacts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         requester_id INTEGER NOT NULL,
@@ -27,6 +28,39 @@ const initDatabase = () => {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (requester_id) REFERENCES users (id),
         FOREIGN KEY (recipient_id) REFERENCES users (id)
+      )
+    `);
+
+    //create disputes table
+    db.run(`
+      CREATE TABLE IF NOT EXISTS disputes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT
+        title TEXT NOT NULL,
+        creator_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'ongoing', -- 'ongoing', 'rejected', 'ongoing', completed'
+        verdict TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (creator_id) REFERENCES users (id)
+      )
+    `);
+
+      // Create dispute_participants table
+
+      db.run(`
+        CREATE TABLE IF NOT EXISTS dispute_participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        dispute_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'invited', -- 'invited', 'accepted', 'rejected'
+        response_text TEXT,
+        joined_at DATETIME,
+        response_submitted_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (dispute_id) REFERENCES disputes (id),
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        UNIQUE(dispute_id, user_id)
       )
     `);
   });
@@ -53,6 +87,278 @@ const createUser = (userData, callback) => {
 const getUserByEmail = (email, callback) => {
   db.get('SELECT * FROM users WHERE email = ?', [email], callback);
 };
+
+const createDispute = (disputeData, callback) => {
+  const { title, creator_id, participant_ids } = disputeData;
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    const stmt = db.prepare(`
+      INSERT INTO disputes(title, creator_id, status)
+      values (?, ?. 'ongoing')
+    `);
+
+    stmt.run(title, creator_id, function(err) {
+      if (err) {
+        db.run('ROLLBACK');
+        callback(err, null);
+        return;
+      }
+
+    const dispute_id = this.lastID;
+
+    const creatorStmt = db.prepare(`
+      INSERT INTO dispute_participants (dispute_id, user_id, status, joined_at)
+      VALUES (?, ?, 'accepted', CURRENT_TIMESTAMP)
+    `);
+
+    creatorStmt.run(dispute_id, creator_id, (err) => {
+      if (err) {
+        db.run('ROLLBACK');
+        callback(err, null);
+        return;
+      }
+
+      if (participant_ids && participant_ids.length > 0) {
+        const participantStmt = db.prepare(`
+          INSERT INTO dispute_participants (dispute_id, user_id, status)
+          VALUES (?, ?, 'invited')
+          `);
+
+          let completed = 0;
+          let hasError = false;
+
+          participant_ids.forEach(user_id => {
+            participantStmt.run(dispute_id, user_id, (err) => {
+              if (err && !hasError) {
+                hasError = true;
+                db.run('ROLLBACK');
+                callback(err, null);
+                return;
+              }
+            completed++
+            if (completed === participant_ids.length && !hasError){
+              db.run('COMMIT');
+              callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
+            }
+          });
+        });
+
+        participantStmt.finalize();
+    }   else {
+        db.run('COMMIT');
+        callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
+      }  
+    
+    });
+
+    creatorStmt.finalize();
+  });
+};
+
+const getDisputesByUser = (user_id, callback) -> {
+  const query = `
+    SELECT DISTINCT 
+      d.id,
+      d.title,
+      d.creator_id,
+      d.status,
+      d.verdict,
+      d.created_at,
+      u.name as creator_name,
+      dp.status as user_participation_status
+    FROM disputes d
+    JOIN users u ON creator_id = u.id 
+    JOIN dispute_participants dp ON d.id = dp.dispute_id
+    WHERE dp.user_id = ?
+    ORDER BY d.created_at DESC
+    `;
+
+  db.all(query, [user_id], callback);
+};
+
+const getDisputeById = (dispute_id, callback) => {
+  const query = `
+    SELECT
+      d.id,
+      d.title,
+      d.creator_id,
+      d.status,
+      d.verdict,
+      d.created_at,
+      u.name as creator_name,
+      u.email as creator_email
+    FROM disputes d
+    JOIN users u on d.creator_id = u.id 
+    WHERE d.id = ?
+  `;
+
+  db.get(query, [dispute_id], (err, dispute) => {
+    if (err) {
+      callback(err, null);
+      return;
+    }
+
+    if (!dispute) {
+      callback(null, null);
+      return;
+    }
+      
+    const participantsQuery = `
+      SELECT
+        dp.user_id,
+        dp.status,
+        dp.response_text,
+        dp.joined_at,
+        dp.response_submitted_at,
+        u.name,
+        u.email 
+      FROM dispute_participants dp 
+      JOIN users u ON dp.user_id = u.id 
+      WHERE dp.dispute_id = ? 
+      ORDER BY dp.created_at ASC
+    `;
+
+    db.all(participantsQuery, [dispute_id], (err, participants) => {
+      if (err) {
+        callback(err, null);
+        return;
+      }
+
+      dispute.participants = participants;
+      callback(null, dispute);
+    });
+  });
+};
+
+
+const updateParticipantStatus = (dispute_id, user_id, status, callback) => {
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // Update participant status
+    const updateStmt = db.prepare(`
+      UPDATE dispute_participants 
+      SET status = ?, joined_at = CASE WHEN ? = 'accepted' THEN CURRENT_TIMESTAMP ELSE joined_at END, updated_at = CURRENT_TIMESTAMP
+      WHERE dispute_id = ? AND user_id = ?
+    `);
+    
+    updateStmt.run(status, status, dispute_id, user_id, function(err) {
+      if (err) {
+        db.run('ROLLBACK');
+        callback(err, null);
+        return;
+      }
+      
+      if (this.changes === 0) {
+        db.run('ROLLBACK');
+        callback(new Error('Participant not found'), null);
+        return;
+      }
+      
+      // If someone rejected, mark the entire dispute as rejected
+      if (status === 'rejected') {
+        const disputeStmt = db.prepare(`
+          UPDATE disputes 
+          SET status = 'rejected', updated_at = CURRENT_TIMESTAMP 
+          WHERE id = ?
+        `);
+        
+        disputeStmt.run(dispute_id, (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            callback(err, null);
+          } else {
+            db.run('COMMIT');
+            callback(null, { dispute_id, user_id, status });
+          }
+        });
+        
+        disputeStmt.finalize();
+      } else {
+        db.run('COMMIT');
+        callback(null, { dispute_id, user_id, status });
+      }
+    });
+    
+    updateStmt.finalize();
+  });
+};
+
+
+const submitDisputeResponse = (dispute_id, user_id, response_text, callback) => {
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // Update participant response
+    const updateStmt = db.prepare(`
+      UPDATE dispute_participants 
+      SET response_text = ?, response_submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE dispute_id = ? AND user_id = ? AND status = 'accepted'
+    `);
+    
+    updateStmt.run(response_text, dispute_id, user_id, function(err) {
+      if (err) {
+        db.run('ROLLBACK');
+        callback(err, null);
+        return;
+      }
+      
+      if (this.changes === 0) {
+        db.run('ROLLBACK');
+        callback(new Error('Participant not found or not accepted'), null);
+        return;
+      }
+      
+      // Check if all accepted participants have submitted responses
+      const checkQuery = `
+        SELECT COUNT(*) as total,
+               SUM(CASE WHEN response_text IS NOT NULL THEN 1 ELSE 0 END) as submitted
+        FROM dispute_participants 
+        WHERE dispute_id = ? AND status = 'accepted'
+      `;
+      
+      db.get(checkQuery, [dispute_id], (err, result) => {
+        if (err) {
+          db.run('ROLLBACK');
+          callback(err, null);
+          return;
+        }
+        
+        // If all accepted participants have submitted, mark dispute as completed
+        if (result.total === result.submitted) {
+          const disputeStmt = db.prepare(`
+            UPDATE disputes 
+            SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+          `);
+
+          // TODO: compute & update verdict?
+          
+          disputeStmt.run(dispute_id, (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              callback(err, null);
+            } else {
+              db.run('COMMIT');
+              callback(null, { dispute_id, user_id, response_text, completed: true });
+            }
+          });
+          
+          disputeStmt.finalize();
+        } else {
+          db.run('COMMIT');
+          callback(null, { dispute_id, user_id, response_text, completed: false });
+        }
+      });
+    });
+    
+    updateStmt.finalize();
+  });
+};
+
+
 
 const createContactRequest = (requesterEmail, recipientEmail, callback) => {
   // First, get the requester ID
@@ -173,5 +479,10 @@ module.exports = {
   getUserByEmail,
   createContactRequest,
   getUserContacts,
-  updateContactRequest
+  updateContactRequest,
+  createDispute,
+  getDisputesByUser,
+  getDisputeById,
+  updateParticipantStatus,
+  submitDisputeResponse
 };
