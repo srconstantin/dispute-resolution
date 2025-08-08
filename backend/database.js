@@ -34,7 +34,7 @@ const initDatabase = () => {
     //create disputes table
     db.run(`
       CREATE TABLE IF NOT EXISTS disputes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         creator_id INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'ongoing', -- 'ongoing', 'rejected', 'ongoing', completed'
@@ -96,7 +96,7 @@ const createDispute = (disputeData, callback) => {
 
     const stmt = db.prepare(`
       INSERT INTO disputes(title, creator_id, status)
-      values (?, ?. 'ongoing')
+      values (?, ?, 'ongoing')
     `);
 
     stmt.run(title, creator_id, function(err) {
@@ -160,7 +160,7 @@ const createDispute = (disputeData, callback) => {
   });
 };
 
-const getDisputesByUser = (user_id, callback) -> {
+const getDisputesByUser = (user_id, callback) => {
   const query = `
     SELECT DISTINCT 
       d.id,
@@ -172,7 +172,7 @@ const getDisputesByUser = (user_id, callback) -> {
       u.name as creator_name,
       dp.status as user_participation_status
     FROM disputes d
-    JOIN users u ON creator_id = u.id 
+    JOIN users u ON d.creator_id = u.id 
     JOIN dispute_participants dp ON d.id = dp.dispute_id
     WHERE dp.user_id = ?
     ORDER BY d.created_at DESC

@@ -6,8 +6,8 @@ const {
   getDisputeById, 
   updateParticipantStatus, 
   submitDisputeResponse,
-  getContactsByUser,
-  getUserById
+  getUserContacts,
+  getUserByEmail
 } = require('../database');
 
 const router = express.Router();
@@ -56,23 +56,40 @@ router.post('/', authenticateToken, (req, res) => {
   }
   
   // Get user's contacts to verify they can invite these people
-  getContactsByUser(req.user.userId, (err, contacts) => {
+
+  getUserContacts(req.user.email, (err, result) => {
+    console.log('getUserContacts result:', { err, result });
+    
     if (err) {
       console.error('Error fetching contacts:', err);
       return res.status(500).json({ error: 'Failed to verify contacts' });
     }
     
-    // Create a map of contact emails to user IDs
+    // Create a map of contact emails to user IDs (need to look up user IDs)
+    const contactEmails = result.contacts.map(contact => contact.contact_email);
     const contactEmailMap = {};
-    contacts.forEach(contact => {
-      if (contact.requester_id === req.user.userId && contact.recipient_id) {
-        // User is the requester and recipient accepted
-        contactEmailMap[contact.recipient_email] = contact.recipient_id;
-      } else if (contact.recipient_id === req.user.userId) {
-        // User is the recipient and accepted
-        contactEmailMap[contact.requester_email] = contact.requester_id;
-      }
+    
+    // Look up user IDs for each contact email
+    let completed = 0;
+    if (contactEmails.length === 0) {
+      return res.status(400).json({ error: 'You need contacts to create a dispute' });
+    }
+    
+    contactEmails.forEach(email => {
+      getUserByEmail(email, (err, user) => {
+        if (!err && user) {
+          contactEmailMap[email] = user.id;
+        }
+        completed++;
+        
+        if (completed === contactEmails.length) {
+          // Continue with dispute creation logic
+          processDisputeCreation();
+        }
+      });
     });
+
+    function processDisputeCreation() {
     
     // Verify all participant emails are in user's contacts
     const participant_ids = [];
@@ -91,7 +108,8 @@ router.post('/', authenticateToken, (req, res) => {
         error: `These emails are not in your contacts: ${invalid_emails.join(', ')}` 
       });
     }
-    
+
+
     // Create the dispute
     createDispute({
       title: title.trim(),
@@ -108,6 +126,8 @@ router.post('/', authenticateToken, (req, res) => {
         dispute 
       });
     });
+    
+    }
   });
 });
 

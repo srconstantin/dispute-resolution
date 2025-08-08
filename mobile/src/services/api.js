@@ -133,3 +133,138 @@ export const rejectContactRequest = async (requestId, token) => {
     throw error;
   }
 };
+
+
+export const getDisputes = async (token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get disputes');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const createDispute = async (disputeData, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(disputeData),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create dispute');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getDisputeById = async (disputeId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to get dispute details');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const joinDispute = async (disputeId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}/join`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to join dispute');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const rejectDispute = async (disputeId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}/reject`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to reject dispute');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const submitDisputeResponse = async (disputeId, responseText, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}/response`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ response_text: responseText }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to submit response');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
