@@ -4,17 +4,21 @@ import SignupScreen from './src/screens/SignupScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ContactsScreen from './src/screens/ContactsScreen';
+import DisputesScreen from './src/screens/DisputesScreen';
+import CreateDisputeScreen from './src/screens/CreateDisputeScreen';
+import DisputeDetailScreen from './src/screens/DisputeDetailScreen';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home', 'contacts'
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-
+  const [selectedDisputeId, setSelectedDisputeId] = useState(null);
 
 
   const handleSignupSuccess = (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
+    setSelectedDisputeId(null);
     setCurrentScreen('home');
   };
 
@@ -27,6 +31,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setToken(null);
+    setSelectedDisputeId(null);
     setCurrentScreen('login');
   };
 
@@ -42,9 +47,37 @@ function App() {
     setCurrentScreen('contacts');
   };
 
+  const handleNavigateToDisputes = () => {
+    setCurrentScreen('disputes');
+  };
+
   const handleBackToHome = () => {
     setCurrentScreen('home');
   };
+
+  const handleCreateDispute = () => {
+    setCurrentScreen('createDispute');
+  };
+
+
+  const handleViewDispute = (disputeId) => {
+    setSelectedDisputeId(disputeId);
+    setCurrentScreen('disputeDetail');
+  };
+
+  const handleBackToDisputes = () => {
+    setCurrentScreen('disputes');
+  };
+
+  const handleDisputeCreated = () => {
+    setCurrentScreen('disputes');
+  };
+
+  const handleDisputeUpdated = () => {
+    // Could trigger a refresh of disputes list here if needed
+    console.log('Dispute updated');
+  };
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -67,12 +100,41 @@ function App() {
           token={token}
           onLogout={handleLogout}
           onNavigateToContacts={handleNavigateToContacts}
+          onNavigateToDisputes={handleNavigateToDisputes}
         />
       )}
       {currentScreen === 'contacts' && (
         <ContactsScreen 
           token={token}
           onBack={handleBackToHome}
+        />
+      )}
+
+      
+      {currentScreen === 'disputes' && (
+        <DisputesScreen 
+          token={token}
+          onBack={handleBackToHome}
+          onCreateDispute={handleCreateDispute}
+          onViewDispute={handleViewDispute}
+        />
+      )}
+
+      {currentScreen === 'createDispute' && (
+        <CreateDisputeScreen 
+          token={token}
+          onBack={handleBackToDisputes}
+          onDisputeCreated={handleDisputeCreated}
+        />
+      )}
+
+      {currentScreen === 'disputeDetail' && selectedDisputeId && (
+        <DisputeDetailScreen 
+          disputeId={selectedDisputeId}
+          token={token}
+          currentUserId={user?.id}
+          onBack={handleBackToDisputes}
+          onDisputeUpdated={handleDisputeUpdated}
         />
       )}
     </SafeAreaView>
