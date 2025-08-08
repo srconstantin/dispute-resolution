@@ -33,8 +33,9 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 
 
 TODO:
-Send invite emails to invited contacts
-Add LLM functionality
+--Send invite emails to invited contacts
+
+--Add LLM functionality
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
