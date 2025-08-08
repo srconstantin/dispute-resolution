@@ -32,7 +32,7 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 
 
 
-TODO:
+## TODO
 --Send invite emails to invited contacts
 
 --Add LLM functionality
