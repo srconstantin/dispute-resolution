@@ -1,4 +1,8 @@
+##How It Works:
 
+This is an LLM-powered dispute resolution app. Think of it as a tool for interpersonal problem solving, or "AITA"-style moral reasoning.  The idea is that the bot can serve as a good-enough "trusted arbiter" that parties to a dispute can agree to abide by, or at least give some credence to, the bot's judgment, after it's heard everyone's side of the story. 
+
+Structurally, a "dispute" has two or more participants, each of whom submits text (representing their side of the story.) Dispute participants can only see their own text. When all participants have submitted text, an LLM will use the text to generate a "verdict" (an assessment of who, if anyone, is in the right or in the wrong, and what should be done about the problem now.) All participants will see the verdict, and the dispute will be marked complete. 
 
 ## Setup Instructions
 
@@ -22,8 +26,15 @@
 
 --saves user info and contact info to sqlite database
 
+--allows users to make disputes, add contacts to disputes, accept or reject dispute invitations, and input text into a dispute. 
+
+--saves disputes and their state (pending/accepted/rejected participants,  each participant's text, ongoing/cancelled/completed dispute status, dispute verdict)
+
+
+
 TODO:
 Send invite emails to invited contacts
-add dispute functionality
+Add LLM functionality
+
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
