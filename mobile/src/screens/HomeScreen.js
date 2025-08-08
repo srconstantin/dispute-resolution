@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { getContacts, getDisputes } from '../services/api';
 
-export default function HomeScreen({ user, token, onLogout, onNavigateToContacts }) {
+export default function HomeScreen({ user, token, onLogout, onNavigateToContacts, onNavigateToDisputes }) {
 
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [invitedDisputesCount, setInvitedDisputesCount] = useState(0);

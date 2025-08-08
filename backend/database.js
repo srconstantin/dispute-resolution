@@ -315,28 +315,37 @@ const submitDisputeResponse = (dispute_id, user_id, response_text, callback) => 
       }
       
       // Check if all accepted participants have submitted responses
+
       const checkQuery = `
-        SELECT COUNT(*) as total,
-               SUM(CASE WHEN response_text IS NOT NULL THEN 1 ELSE 0 END) as submitted
+        SELECT 
+          COUNT(*) as total_participants,
+          SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
+          SUM(CASE WHEN status = 'accepted' AND response_text IS NOT NULL THEN 1 ELSE 0 END) as responded_count,
+          SUM(CASE WHEN status = 'accepted' AND response_text IS NULL THEN 1 ELSE 0 END) as accepted_not_responded,
+          SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as still_invited
         FROM dispute_participants 
-        WHERE dispute_id = ? AND status = 'accepted'
+        WHERE dispute_id = ?
       `;
-      
+
       db.get(checkQuery, [dispute_id], (err, result) => {
         if (err) {
           db.run('ROLLBACK');
           callback(err, null);
           return;
         }
+        // Only mark as completed if:
+        // 1. No one is still invited (everyone has accepted or rejected)
+        // 2. Everyone who accepted has submitted a response
+        const allInvitationsResolved = result.still_invited === 0;
+        const allAcceptedHaveResponded = result.accepted_not_responded === 0;
         
-        // If all accepted participants have submitted, mark dispute as completed
-        if (result.total === result.submitted) {
+        if (allInvitationsResolved && allAcceptedHaveResponded && result.responded_count > 0) {
           const disputeStmt = db.prepare(`
             UPDATE disputes 
             SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
             WHERE id = ?
           `);
-
+        
           // TODO: compute & update verdict?
           
           disputeStmt.run(dispute_id, (err) => {

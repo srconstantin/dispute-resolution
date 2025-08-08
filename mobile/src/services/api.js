@@ -1,4 +1,4 @@
-const API_URL =  'https://beaa5bd6ccb9.ngrok-free.app/api';
+const API_URL =  'https://0a1c498dec76.ngrok-free.app/api';
 
 export const createUser = async (userData) => {
   try {
