@@ -37,5 +37,9 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 
 --Add LLM functionality
 
+--Switch to hosting on the cloud
+
+--Make more visually appealing
+
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
