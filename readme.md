@@ -1,4 +1,4 @@
-##How It Works:
+###How It Works:
 
 This is an LLM-powered dispute resolution app. Think of it as a tool for interpersonal problem solving, or "AITA"-style moral reasoning.  The idea is that the bot can serve as a good-enough "trusted arbiter" that parties to a dispute can agree to abide by, or at least give some credence to, the bot's judgment, after it's heard everyone's side of the story. 
 
