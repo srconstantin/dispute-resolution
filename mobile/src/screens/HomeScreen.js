@@ -6,23 +6,28 @@ import {
   StyleSheet,
   SafeAreaView
 } from 'react-native';
-import { getContacts } from '../services/api';
+import { getContacts, getDisputes } from '../services/api';
 
 export default function HomeScreen({ user, token, onLogout, onNavigateToContacts }) {
 
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
+  const [invitedDisputesCount, setInvitedDisputesCount] = useState(0);
   
   useEffect(() => {
-    const checkPendingRequests = async () => {
+    const checkNotifications = async () => {
       try {
-        const data = await getContacts(token);
+        const contactData = await getContacts(token);
         setPendingRequestsCount(data.pendingRequests?.length || 0);
+
+        const disputeData = await getDisputes(token);
+        const invitedDisputes = disputeData.disputes?.filter(d => d.user_participation_status === 'invited') || [];
+        setInvitedDisputesCount(invitedDisputes.length);
       } catch (error) {
-        console.log('Error checking pending requests:', error);
+        console.log('Error checking notifications:', error);
       }
     };
 
-    checkPendingRequests();
+    checkNotifications();
   }, [token]);
 
   return (
@@ -32,27 +37,36 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
         <Text style={styles.welcome}>Welcome, {user.name}!</Text>
         <Text style={styles.email}>{user.email}</Text>
         
-        <View style={styles.placeholderSection}>
-          <Text style={styles.sectionTitle}>What you can do here:</Text>
-          <Text style={styles.placeholderText}>• Manage contacts</Text>
-          <Text style={styles.placeholderText}>• Create a dispute</Text>
-          <Text style={styles.placeholderText}>• View your disputes</Text>
-          <Text style={styles.placeholderText}>• Settings</Text>
-        </View>
+       <View style={styles.buttonSection}>
+          <TouchableOpacity 
+            style={styles.actionButton} 
+            onPress={onNavigateToContacts}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.actionButtonText}>Contacts</Text>
+              {pendingRequestsCount > 0 && (
+                <View style={styles.redDot}>
+                  <Text style={styles.redDotText}>{pendingRequestsCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.contactsButton} 
-          onPress={onNavigateToContacts}
-        >
-          <View style={styles.contactsButtonContent}>
-            <Text style={styles.contactsButtonText}>Contacts</Text>
-            {pendingRequestsCount > 0 && (
-              <View style={styles.redDot}>
-                <Text style={styles.redDotText}>{pendingRequestsCount}</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+            style={styles.actionButton} 
+            onPress={onNavigateToDisputes}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.actionButtonText}>Disputes</Text>
+              {invitedDisputesCount > 0 && (
+                <View style={styles.redDot}>
+                  <Text style={styles.redDotText}>{invitedDisputesCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+
 
         <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
           <Text style={styles.logoutText}>Log Out</Text>
@@ -108,6 +122,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: '#666',
   },
+  buttonSection: {
+    flexDirection: 'column',
+    gap: 15,
+    marginBottom: 40,
+  },
   logoutButton: {
     backgroundColor: '#FF3B30',
     borderRadius: 8,
@@ -121,18 +140,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  contactsButton: {
+  actionButton: {
     backgroundColor: '#007AFF',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
     alignItems: 'center',
   },
-  contactsButtonContent: {
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  contactsButtonText: {
+  actionButtonText: {
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
