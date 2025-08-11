@@ -484,6 +484,25 @@ const updateContactRequest = (requestId, status, callback) => {
   stmt.finalize();
 };
 
+const { generateVerdict } = require('./services/claude');
+
+const checkAndGenerateVerdict = async (disputeId, callback) => {
+  // 1. Check if all participants have submitted
+  const allSubmitted = await checkAllParticipantsSubmitted(disputeId);
+  
+  if (allSubmitted) {
+    // 2. Get dispute data
+    const disputeData = await getDisputeData(disputeId);
+    
+    // 3. Generate verdict using Claude
+    const verdict = await generateVerdict(disputeData);
+    
+    // 4. Save verdict to database
+    const stmt = db.prepare(`UPDATE disputes SET verdict = ?, status = 'resolved' WHERE id = ?`);
+    stmt.run(verdict, disputeId, callback);
+  }
+};
+
 // Update the module.exports to include new functions:
 module.exports = {
   initDatabase,
