@@ -370,7 +370,23 @@ const submitDisputeResponse = (dispute_id, user_id, response_text, callback) => 
   });
 };
 
-
+const updateDisputeVerdict = (dispute_id, verdict, callback) => {
+  const stmt = db.prepare(`
+    UPDATE disputes 
+    SET verdict = ?, updated_at = CURRENT_TIMESTAMP 
+    WHERE id = ?
+  `);
+  
+  stmt.run(verdict, dispute_id, function(err) {
+    if (err) {
+      callback(err, null);
+    } else {
+      callback(null, { dispute_id, verdict, updated: this.changes > 0 });
+    }
+  });
+  
+  stmt.finalize();
+};
 
 const createContactRequest = (requesterEmail, recipientEmail, callback) => {
   // First, get the requester ID
@@ -515,5 +531,6 @@ module.exports = {
   getDisputesByUser,
   getDisputeById,
   updateParticipantStatus,
-  submitDisputeResponse
+  submitDisputeResponse,
+  updateDisputeVerdict
 };

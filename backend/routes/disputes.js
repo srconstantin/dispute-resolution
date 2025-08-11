@@ -6,12 +6,15 @@ const {
   getDisputeById, 
   updateParticipantStatus, 
   submitDisputeResponse,
+  updateDisputeVerdict,
   getUserContacts,
   getUserByEmail
 } = require('../database');
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-for-development';
+
+const { generateVerdict } = require('../services/claude');
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
@@ -231,10 +234,48 @@ router.put('/:id/response', authenticateToken, (req, res) => {
     }
     
     if (result.completed) {
-      res.json({ 
-        message: 'Response submitted successfully. All participants have responded - dispute is now completed!',
-        result 
-      });
+      try {
+        // Get full dispute data for Claude API
+        getDisputeById(dispute_id, async (err, disputeData) => {
+          if (err) {
+            console.error('Error fetching dispute for verdict:', err);
+            return res.status(500).json({ error: 'Failed to generate verdict' });
+          }
+  
+          try {
+            // Generate verdict using Claude API
+            console.log('Generating verdict for dispute:', dispute_id);
+            const verdict = await generateVerdict(disputeData);
+            
+            // Update database with verdict
+            updateDisputeVerdict(dispute_id, verdict, (err, verdictResult) => {
+              if (err) {
+                console.error('Error saving verdict:', err);
+                return res.status(500).json({ error: 'Failed to save verdict' });
+              }
+              
+              console.log('Verdict saved successfully for dispute:', dispute_id);
+              res.json({ 
+                message: 'Response submitted successfully. All participants have responded - dispute is now completed with verdict!',
+                result,
+                verdict: verdict
+              });
+            });
+          } catch (claudeError) {
+            console.error('Error generating verdict:', claudeError);
+            res.json({ 
+              message: 'Response submitted successfully. All participants have responded - dispute is now completed! (Verdict generation failed)',
+              result 
+            });
+          }
+        });
+      } catch (error) {
+        console.error('Error in verdict generation process:', error);
+        res.json({ 
+          message: 'Response submitted successfully. All participants have responded - dispute is now completed!',
+          result 
+        });
+      }
     } else {
       res.json({ 
         message: 'Response submitted successfully',

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  StyleSheet,
   SafeAreaView,
   Alert,
   KeyboardAvoidingView,
@@ -278,27 +279,9 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
               <Text style={styles.sectionTitle}>Verdict</Text>
               <View style={styles.verdictContainer}>
                 <Text style={styles.verdictText}>
-                  {dispute.verdict || 'THIS IS THE VERDICT'}
+                  {dispute.verdict || 'NO VERDICT EXISTS'}
                 </Text>
               </View>
-            </View>
-          )}
-
-          {/* Show all responses for completed disputes */}
-          {dispute.status === 'completed' && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>All Responses</Text>
-              {dispute.participants
-                .filter(p => p.response_text)
-                .map((participant, index) => (
-                  <View key={index} style={styles.responseItem}>
-                    <Text style={styles.responseAuthor}>{participant.name}:</Text>
-                    <Text style={styles.responseContent}>{participant.response_text}</Text>
-                    <Text style={styles.responseDate}>
-                      Submitted: {formatDate(participant.response_submitted_at)}
-                    </Text>
-                  </View>
-                ))}
             </View>
           )}
         </ScrollView>
