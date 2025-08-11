@@ -28,18 +28,21 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 
 --allows users to make disputes, add contacts to disputes, accept or reject dispute invitations, and input text into a dispute. 
 
---saves disputes and their state (pending/accepted/rejected participants,  each participant's text, ongoing/cancelled/completed dispute status, dispute verdict)
+
+--saves disputes and their state (pending/accepted/rejected participants,  each participant's text, ongoing/cancelled/completed dispute status, dispute verdict) into the database
+
+--uses participant text in a call to the Claude API to get a verdict on who's in the right/wrong and what should be done to resolve the dispute; saves the verdict to the database; and shows the users the verdict
 
 
 
 ## TODO
---Send invite emails to invited contacts
+--Make more visually appealing (eg format the verdict correctly, size to fit the screen better, maybe pick a non-default font/color scheme)
 
---Add LLM functionality
+--Send invite emails to invited contacts
 
 --Switch to hosting on the cloud
 
---Make more visually appealing
+
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
