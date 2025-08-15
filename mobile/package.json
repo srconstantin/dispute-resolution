@@ -12,7 +12,8 @@
     "@expo/vector-icons": "^14.0.0",
     "expo": "^53.0.20",
     "react": "19.0.0",
-    "react-native": "0.79.5"
+    "react-native": "0.79.5",
+    "react-native-markdown-display": "^7.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
