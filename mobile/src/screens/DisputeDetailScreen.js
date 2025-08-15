@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse } from '../services/api';
 
 export default function DisputeDetailScreen({ disputeId, token, currentUserId, onBack, onDisputeUpdated }) {
@@ -277,9 +278,9 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Verdict</Text>
               <View style={styles.verdictContainer}>
-                <Text style={styles.verdictText}>
-                  {dispute.verdict || 'NO VERDICT EXISTS'}
-                </Text>
+              <Markdown style={markdownStyles}>
+              {dispute.verdict || 'THIS IS THE VERDICT'}
+              </Markdown>
               </View>
             </View>
           )}
@@ -481,3 +482,15 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
   },
 });
+
+const markdownStyles = {
+  body: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  paragraph: {
+    marginTop: 0,
+    marginBottom: 8,
+  },
+};
