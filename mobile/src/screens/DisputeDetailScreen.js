@@ -11,8 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse } from '../services/api';
+import { theme } from '../styles/theme';
 
 export default function DisputeDetailScreen({ disputeId, token, currentUserId, onBack, onDisputeUpdated }) {
   const [dispute, setDispute] = useState(null);
@@ -29,7 +31,6 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       const data = await getDisputeById(disputeId, token);
       setDispute(data.dispute);
       
-      // Pre-fill response text if user already has a response
       const currentUserParticipant = data.dispute.participants.find(p => p.user_id === currentUserId);
       if (currentUserParticipant && currentUserParticipant.response_text) {
         setResponseText(currentUserParticipant.response_text);
@@ -47,7 +48,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       setSubmitting(true);
       await joinDispute(disputeId, token);
       Alert.alert('Success', 'You have joined the dispute');
-      loadDisputeDetails(); // Refresh
+      loadDisputeDetails();
       onDisputeUpdated?.();
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to join dispute');
@@ -70,7 +71,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
               setSubmitting(true);
               await rejectDispute(disputeId, token);
               Alert.alert('Success', 'You have rejected the dispute');
-              loadDisputeDetails(); // Refresh
+              loadDisputeDetails();
               onDisputeUpdated?.();
             } catch (error) {
               Alert.alert('Error', error.message || 'Failed to reject dispute');
@@ -99,7 +100,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
         Alert.alert('Success', 'Response submitted successfully');
       }
       
-      loadDisputeDetails(); // Refresh
+      loadDisputeDetails();
       onDisputeUpdated?.();
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to submit response');
@@ -124,10 +125,10 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
   };
 
   const getParticipantStatus = (participant) => {
-    if (participant.status === 'invited') return '⏳ Invited';
-    if (participant.status === 'accepted' && participant.response_text) return '✅ Responded';
-    if (participant.status === 'accepted') return '✅ Joined';
-    if (participant.status === 'rejected') return '❌ Rejected';
+    if (participant.status === 'invited') return 'Invited';
+    if (participant.status === 'accepted' && participant.response_text) return 'Responded';
+    if (participant.status === 'accepted') return 'Joined';
+    if (participant.status === 'rejected') return 'Rejected';
     return participant.status;
   };
 
@@ -136,7 +137,8 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Dispute Details</Text>
         </View>
@@ -152,7 +154,8 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Dispute Details</Text>
         </View>
@@ -175,7 +178,8 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
+            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+            <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Dispute Details</Text>
         </View>
@@ -278,9 +282,9 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Verdict</Text>
               <View style={styles.verdictContainer}>
-              <Markdown style={markdownStyles}>
-              {dispute.verdict || 'THIS IS THE VERDICT'}
-              </Markdown>
+                <Markdown style={markdownStyles}>
+                  {dispute.verdict || 'Verdict will appear here'}
+                </Markdown>
               </View>
             </View>
           )}
@@ -290,183 +294,170 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 50,
-    backgroundColor: '#fff',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: 50,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.colors.border,
+    ...theme.shadows.small,
   },
   backButton: {
-    marginRight: 15,
+    marginRight: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.headingRegular,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.medium,
   },
   disputeTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 22,
+    fontFamily: theme.fonts.heading,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   disputeInfo: {
     gap: 4,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   invitationText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
     lineHeight: 20,
+    fontFamily: theme.fonts.body,
   },
   invitationButtons: {
     flexDirection: 'row',
-    gap: 12,
+    gap: theme.spacing.md,
   },
   actionButton: {
     flex: 1,
-    borderRadius: 8,
-    paddingVertical: 12,
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
   },
   acceptButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: theme.colors.success,
   },
   rejectButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.colors.error,
   },
   actionButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   participantItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: theme.spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   participantInfo: {
     flex: 1,
   },
   participantName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   participantEmail: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   participantStatus: {
     fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.headingRegular,
   },
   responsePrompt: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    color: theme.colors.textSecondary,
+    marginBottom: theme.spacing.lg,
     lineHeight: 20,
+    fontFamily: theme.fonts.body,
   },
   responseInput: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.md,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     minHeight: 120,
     textAlignVertical: 'top',
+    fontFamily: theme.fonts.body,
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'right',
-    marginTop: 8,
-    marginBottom: 16,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+    fontFamily: theme.fonts.body,
   },
   submitButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 12,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
+    ...theme.shadows.small,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.textLight,
   },
   submitButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   verdictContainer: {
-    backgroundColor: '#f0f9f0',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#F0F9F0',
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.lg,
     borderLeftWidth: 4,
-    borderLeftColor: '#34C759',
-  },
-  verdictText: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
-  },
-  responseItem: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  responseAuthor: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
-  },
-  responseContent: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
-    marginBottom: 8,
-  },
-  responseDate: {
-    fontSize: 12,
-    color: '#666',
+    borderLeftColor: theme.colors.success,
   },
   centerContainer: {
     flex: 1,
@@ -475,19 +466,21 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   errorText: {
     fontSize: 16,
-    color: '#FF3B30',
+    color: theme.colors.error,
+    fontFamily: theme.fonts.body,
   },
 });
 
 const markdownStyles = {
   body: {
     fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    color: theme.colors.text,
+    fontFamily: theme.fonts.body,
   },
   paragraph: {
     marginTop: 0,

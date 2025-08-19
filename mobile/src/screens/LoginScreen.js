@@ -10,6 +10,7 @@ import {
   Platform
 } from 'react-native';
 import { loginUser } from '../services/api';
+import { theme } from '../styles/theme';
 
 export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
   const [email, setEmail] = useState('');
@@ -27,10 +28,8 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
       const result = await loginUser({ email, password });
       console.log('Login successful:', result);
       
-      // Call success callback with user data
       onLoginSuccess(result.user, result.token);
       
-      // Reset form
       setEmail('');
       setPassword('');
     } catch (error) {
@@ -91,7 +90,7 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2ED',
+    backgroundColor: theme.colors.background,
   },
   content: {
     flex: 1,
@@ -99,42 +98,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontFamily: theme.fonts.heading,
     textAlign: 'center',
     marginBottom: 40,
-    color: '#333',
+    color: theme.colors.text,
   },
   input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.small,
     padding: 15,
     marginBottom: 15,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
+    fontFamily: theme.fonts.body,
   },
   button: {
-    backgroundColor: '#5A9B9E',
-    borderRadius: 8,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.small,
     padding: 15,
     alignItems: 'center',
     marginTop: 10,
+    ...theme.shadows.small,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.textLight,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   switchButton: {
     marginTop: 20,
     alignItems: 'center',
   },
   switchText: {
-    color: '#5A9B9E',
+    color: theme.colors.primary,
     fontSize: 16,
+    fontFamily: theme.fonts.headingRegular,
   },
 });

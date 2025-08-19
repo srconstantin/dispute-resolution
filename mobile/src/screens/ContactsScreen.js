@@ -10,7 +10,9 @@ import {
   SafeAreaView,
   RefreshControl
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getContacts, sendContactRequest, approveContactRequest, rejectContactRequest } from '../services/api';
+import { theme } from '../styles/theme';
 
 export default function ContactsScreen({ token, onBack }) {
   const [contacts, setContacts] = useState([]);
@@ -43,7 +45,7 @@ export default function ContactsScreen({ token, onBack }) {
       const result = await sendContactRequest(newContactEmail.trim(), token);
       Alert.alert('Success', result.message);
       setNewContactEmail('');
-      loadContacts(); // Refresh the lists
+      loadContacts();
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
@@ -55,7 +57,7 @@ export default function ContactsScreen({ token, onBack }) {
     try {
       await approveContactRequest(requestId, token);
       Alert.alert('Success', 'Contact request approved');
-      loadContacts(); // Refresh the lists
+      loadContacts();
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -65,7 +67,7 @@ export default function ContactsScreen({ token, onBack }) {
     try {
       await rejectContactRequest(requestId, token);
       Alert.alert('Success', 'Contact request rejected');
-      loadContacts(); // Refresh the lists
+      loadContacts();
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -86,7 +88,7 @@ export default function ContactsScreen({ token, onBack }) {
     </View>
   );
 
- const renderPendingRequest = ({ item }) => (
+  const renderPendingRequest = ({ item }) => (
     <View style={styles.pendingItem}>
       <View style={styles.contactInfo}>
         <Text style={styles.contactName}>{item.requester_name}</Text>
@@ -108,11 +110,13 @@ export default function ContactsScreen({ token, onBack }) {
       </View>
     </View>
   );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Contacts</Text>
       </View>
@@ -178,126 +182,144 @@ export default function ContactsScreen({ token, onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2ED',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 50,
-    backgroundColor: '#fff',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: 50,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E4DB',
+    borderBottomColor: theme.colors.border,
+    ...theme.shadows.small,
   },
   backButton: {
-    marginRight: 15,
+    marginRight: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 16,
-    color: '#5A9B9E',
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.headingRegular,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   addContactSection: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 20,
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.xl,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.xl,
+    ...theme.shadows.medium,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    marginBottom: theme.spacing.lg,
+    color: theme.colors.text,
   },
   addContactRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: theme.spacing.md,
   },
   emailInput: {
     flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.md,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
-    marginRight: 10,
+    borderColor: theme.colors.border,
+    fontFamily: theme.fonts.body,
   },
   addButton: {
-    backgroundColor: '#5A9B9E',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    ...theme.shadows.small,
   },
   addButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.textLight,
   },
   section: {
-    backgroundColor: '#fff',
-    padding: 20,
-    marginBottom: 20,
+    backgroundColor: theme.colors.surface,
+    marginHorizontal: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.xl,
+    ...theme.shadows.medium,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
   },
   pendingItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.colors.border,
+    gap: theme.spacing.lg,
   },
   contactInfo: {
     flex: 1,
   },
   contactName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   contactEmail: {
     fontSize: 14,
-    color: '#666',
+    fontFamily: theme.fonts.body,
+    color: theme.colors.textSecondary,
     marginTop: 2,
   },
   buttonContainer: {
     flexDirection: 'row',
+    gap: theme.spacing.sm,
+    flexShrink: 0,
   },
   approveButton: {
-    backgroundColor: '#27AE60',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginRight: 8,
+    backgroundColor: theme.colors.success,
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   rejectButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: theme.colors.error,
+    borderRadius: theme.borderRadius.small,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
+    color: theme.colors.textSecondary,
     fontSize: 16,
-    marginTop: 20,
+    fontFamily: theme.fonts.body,
+    marginTop: theme.spacing.xl,
   },
 });

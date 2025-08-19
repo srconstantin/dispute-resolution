@@ -11,7 +11,9 @@ import {
   KeyboardAvoidingView,
   Platform
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getContacts, createDispute } from '../services/api';
+import { theme } from '../styles/theme';
 
 export default function CreateDisputeScreen({ token, onBack, onDisputeCreated }) {
   const [title, setTitle] = useState('');
@@ -92,7 +94,7 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
           <Text style={styles.contactEmail}>{item.contact_email}</Text>
         </View>
         <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-          {isSelected && <Text style={styles.checkmark}>✓</Text>}
+          {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
         </View>
       </TouchableOpacity>
     );
@@ -106,7 +108,8 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
       >
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Cancel</Text>
+            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+            <Text style={styles.backButtonText}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Create Dispute</Text>
         </View>
@@ -173,60 +176,68 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2ED',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 50,
-    backgroundColor: '#fff',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: 50,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E4DB',
+    borderBottomColor: theme.colors.border,
+    ...theme.shadows.small,
   },
   backButton: {
-    marginRight: 15,
+    marginRight: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 16,
-    color: '#5A9B9E',
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.headingRegular,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.medium,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 12,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.md,
   },
   titleInput: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.md,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     minHeight: 60,
     textAlignVertical: 'top',
+    fontFamily: theme.fonts.body,
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'right',
-    marginTop: 8,
+    marginTop: theme.spacing.sm,
+    fontFamily: theme.fonts.body,
   },
   contactsList: {
     maxHeight: 200,
@@ -234,10 +245,10 @@ const styles = StyleSheet.create({
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 8,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.small,
+    marginBottom: theme.spacing.sm,
   },
   selectedContact: {
     backgroundColor: '#E3F2FD',
@@ -247,65 +258,64 @@ const styles = StyleSheet.create({
   },
   contactName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   contactEmail: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
     marginTop: 2,
+    fontFamily: theme.fonts.body,
   },
   checkbox: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#5A9B9E',
-    borderColor: '#5A9B9EF',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   createButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    padding: theme.spacing.lg,
     alignItems: 'center',
     marginTop: 'auto',
-    marginBottom: 20,
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.medium,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: theme.colors.textLight,
   },
   createButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   centerContainer: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: theme.spacing.xl,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   emptyText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
+    fontFamily: theme.fonts.body,
   },
 });

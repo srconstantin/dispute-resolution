@@ -9,7 +9,9 @@ import {
   RefreshControl,
   Alert
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getDisputes } from '../services/api';
+import { theme } from '../styles/theme';
 
 export default function DisputesScreen({ token, onBack, onCreateDispute, onViewDispute }) {
   const [disputes, setDisputes] = useState([]);
@@ -102,7 +104,8 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
+          <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Your Disputes</Text>
       </View>
@@ -112,7 +115,8 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
           style={styles.createButton}
           onPress={onCreateDispute}
         >
-          <Text style={styles.createButtonText}>+ Create New Dispute</Text>
+          <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={{marginRight: 8}} />
+          <Text style={styles.createButtonText}>Create New Dispute</Text>
         </TouchableOpacity>
 
         {loading && disputes.length === 0 ? (
@@ -123,7 +127,7 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
           <View style={styles.centerContainer}>
             <Text style={styles.emptyText}>No disputes yet</Text>
             <Text style={styles.emptySubtext}>
-              Create your first dispute to get started
+              Create your first dispute to get started!
             </Text>
           </View>
         ) : (
@@ -146,69 +150,78 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2ED',
+    backgroundColor: theme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 50,
-    backgroundColor: '#fff',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: 50,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E8E4DB',
+    borderBottomColor: theme.colors.border,
+    ...theme.shadows.small,
   },
   backButton: {
-    marginRight: 15,
+    marginRight: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   backButtonText: {
     fontSize: 16,
-    color: '#5A9B9E',
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.headingRegular,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: theme.spacing.xl,
   },
   createButton: {
-    backgroundColor: '#5A9B9E',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.borderRadius.medium,
+    padding: theme.spacing.lg,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: theme.spacing.xl,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    ...theme.shadows.medium,
   },
   createButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   listContainer: {
-    paddingBottom: 20,
+    paddingBottom: theme.spacing.xl,
   },
   disputeItem: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.medium,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.border,
+    ...theme.shadows.small,
   },
   ongoingDispute: {
-    borderColor: '#007AFF',
+    borderLeftColor: theme.colors.primary,
   },
   invitedDispute: {
-    borderColor: '#F39C12',
-    backgroundColor: '#FFF3E0',
+    borderLeftColor: theme.colors.warning,
+    backgroundColor: '#FFF9E6',
   },
   completedDispute: {
-    borderColor: '#27AE60',
+    borderLeftColor: theme.colors.success,
     backgroundColor: '#F0F9F0',
   },
   rejectedDispute: {
-    borderColor: '#E74C3C',
+    borderLeftColor: theme.colors.error,
     backgroundColor: '#FFF0F0',
     opacity: 0.7,
   },
@@ -216,25 +229,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: theme.spacing.md,
   },
   disputeTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
     flex: 1,
-    marginRight: 10,
+    marginRight: theme.spacing.md,
   },
   statusBadge: {
-    backgroundColor: '#E5E5E7',
-    borderRadius: 8,
-    paddingHorizontal: 8,
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius.small,
+    paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
   },
   disputeInfo: {
     flexDirection: 'row',
@@ -243,11 +256,13 @@ const styles = StyleSheet.create({
   },
   creatorText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   dateText: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   centerContainer: {
     flex: 1,
@@ -256,17 +271,19 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: theme.colors.textSecondary,
     textAlign: 'center',
+    fontFamily: theme.fonts.body,
   },
 });
