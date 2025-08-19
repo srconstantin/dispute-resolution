@@ -1,5 +1,5 @@
 {
-  "name": "dispute-app-mobile",
+  "name": "fairenough-mobile",
   "version": "1.0.0",
   "main": "App.js",
   "scripts": {
@@ -8,14 +8,13 @@
     "ios": "expo start --ios"
   },
   "dependencies": {
-    "@expo-google-fonts/playfair-display": "^0.4.1",
-    "@expo/ngrok": "^4.1.3",
+    "expo": "~51.0.0",
+    "react": "18.2.0",
+    "react-native": "0.74.0",
     "@expo/vector-icons": "^14.0.0",
-    "expo": "^53.0.20",
-    "expo-font": "^13.3.2",
-    "react": "19.0.0",
-    "react-native": "0.79.5",
-    "react-native-markdown-display": "^7.0.2"
+    "@expo-google-fonts/playfair-display": "^0.2.3",
+    "expo-font": "~12.0.0",
+    "react-native-markdown-display": "^7.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
