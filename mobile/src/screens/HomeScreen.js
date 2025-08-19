@@ -4,24 +4,42 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView
+  SafeAreaView,
+  ScrollView
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getContacts, getDisputes } from '../services/api';
+import { theme } from '../styles/theme';
+import TealSpiralLogo from '../components/TealSpiralLogo';
 
 export default function HomeScreen({ user, token, onLogout, onNavigateToContacts, onNavigateToDisputes }) {
-
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [invitedDisputesCount, setInvitedDisputesCount] = useState(0);
+  const [stats, setStats] = useState({
+    activeDisputes: 0,
+    resolvedDisputes: 0,
+    totalContacts: 0
+  });
   
   useEffect(() => {
     const checkNotifications = async () => {
       try {
         const contactData = await getContacts(token);
-        setPendingRequestsCount(data.pendingRequests?.length || 0);
+        setPendingRequestsCount(contactData.pendingRequests?.length || 0);
+        setStats(prev => ({ ...prev, totalContacts: contactData.contacts?.length || 0 }));
 
         const disputeData = await getDisputes(token);
-        const invitedDisputes = disputeData.disputes?.filter(d => d.user_participation_status === 'invited') || [];
+        const disputes = disputeData.disputes || [];
+        const invitedDisputes = disputes.filter(d => d.user_participation_status === 'invited');
+        const activeDisputes = disputes.filter(d => d.status === 'ongoing');
+        const resolvedDisputes = disputes.filter(d => d.status === 'completed');
+        
         setInvitedDisputesCount(invitedDisputes.length);
+        setStats(prev => ({ 
+          ...prev, 
+          activeDisputes: activeDisputes.length,
+          resolvedDisputes: resolvedDisputes.length
+        }));
       } catch (error) {
         console.log('Error checking notifications:', error);
       }
@@ -30,48 +48,103 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
     checkNotifications();
   }, [token]);
 
+  const getInitials = (name) => {
+    return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>YOUR HOMEPAGE</Text>
-        <Text style={styles.welcome}>Welcome, {user.name}!</Text>
-        <Text style={styles.email}>{user.email}</Text>
-        
-       <View style={styles.buttonSection}>
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={onNavigateToContacts}
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.actionButtonText}>Contacts</Text>
-              {pendingRequestsCount > 0 && (
-                <View style={styles.redDot}>
-                  <Text style={styles.redDotText}>{pendingRequestsCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-
-        <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={onNavigateToDisputes}
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.actionButtonText}>Disputes</Text>
-              {invitedDisputesCount > 0 && (
-                <View style={styles.redDot}>
-                  <Text style={styles.redDotText}>{invitedDisputesCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TealSpiralLogo size={36} />
+          <Text style={styles.appName}>FairEnough</Text>
         </View>
-
-
-        <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity style={styles.profileButton} onPress={onLogout}>
+          <Text style={styles.profileText}>{getInitials(user?.name)}</Text>
         </TouchableOpacity>
       </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeTitle}>Welcome back, {user?.name?.split(' ')[0]}</Text>
+          <Text style={styles.welcomeSubtitle}>Resolve disputes fairly and transparently</Text>
+        </View>
+
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <View style={styles.statIcon}>
+              <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.statNumber}>{stats.activeDisputes}</Text>
+            <Text style={styles.statLabel}>Active Disputes</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIcon}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
+            </View>
+            <Text style={styles.statNumber}>{stats.resolvedDisputes}</Text>
+            <Text style={styles.statLabel}>Resolved</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIcon}>
+              <Ionicons name="people-outline" size={20} color={theme.colors.primary} />
+            </View>
+            <Text style={styles.statNumber}>{stats.totalContacts}</Text>
+            <Text style={styles.statLabel}>Contacts</Text>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToDisputes}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionTitle}>New Dispute</Text>
+              <Text style={styles.actionSubtitle}>Start a new dispute resolution</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToDisputes}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="document-text-outline" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionTitle}>View Disputes</Text>
+              <Text style={styles.actionSubtitle}>See all your disputes</Text>
+              {invitedDisputesCount > 0 && (
+                <View style={styles.actionBadge}>
+                  <Text style={styles.actionBadgeText}>{invitedDisputesCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToContacts}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="people-outline" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionTitle}>Contacts</Text>
+              <Text style={styles.actionSubtitle}>Manage your contacts</Text>
+              {pendingRequestsCount > 0 && (
+                <View style={styles.actionBadge}>
+                  <Text style={styles.actionBadgeText}>{pendingRequestsCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={onLogout}>
+              <View style={styles.actionIcon}>
+                <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+              </View>
+              <Text style={styles.actionTitle}>Log Out</Text>
+              <Text style={styles.actionSubtitle}>Sign out of your account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -79,95 +152,154 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F2ED',
+    backgroundColor: theme.colors.background,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 30,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
     paddingTop: 50,
+    paddingBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    ...theme.shadows.small,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  welcome: {
-    fontSize: 24,
-    textAlign: 'center',
-    marginBottom: 10,
-    color: '#5A9B9E',
-  },
-  email: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 40,
-    color: '#666',
-  },
-  placeholderSection: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 40,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#333',
-  },
-  placeholderText: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: '#666',
-  },
-  buttonSection: {
-    flexDirection: 'column',
-    gap: 15,
-    marginBottom: 40,
-  },
-  logoutButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 8,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 'auto',
-    marginBottom: 30,
-  },
-  logoutText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionButton: {
-    backgroundColor: '#5A9B9E',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  buttonContent: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  appName: {
+    fontSize: 28,
+    fontFamily: theme.fonts.heading,
+    color: theme.colors.text,
+    marginLeft: theme.spacing.md,
   },
-  redDot: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    marginLeft: 10,
+  profileButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  redDotText: {
-    color: '#fff',
+  profileText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: theme.fonts.headingMedium,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  welcomeSection: {
+    paddingVertical: theme.spacing.xxl,
+  },
+  welcomeTitle: {
+    fontSize: 32,
+    fontFamily: theme.fonts.heading,
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    fontFamily: theme.fonts.headingRegular,
+    color: theme.colors.textSecondary,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.xxxl,
+    gap: theme.spacing.sm,
+  },
+  statCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+    flex: 1,
+    ...theme.shadows.medium,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.cardBackground,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontFamily: theme.fonts.heading,
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  statLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: theme.fonts.headingRegular,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
+  section: {
+    marginBottom: theme.spacing.xxxl,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.lg,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.large,
+    padding: theme.spacing.xl,
+    width: '48%',
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.medium,
+    position: 'relative',
+  },
+  actionIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  actionTitle: {
+    fontSize: 16,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  actionSubtitle: {
+    fontSize: 12,
+    fontFamily: theme.fonts.headingRegular,
+    color: theme.colors.textSecondary,
+    lineHeight: 16,
+  },
+  actionBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: theme.colors.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: theme.fonts.headingMedium,
   },
 });
