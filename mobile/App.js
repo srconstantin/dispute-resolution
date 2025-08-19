@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, AppRegistry } from 'react-native';
+import { 
+  PlayfairDisplay_400Regular,
+  PlayfairDisplay_500Medium,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_900Black,
+} from '@expo-google-fonts/playfair-display';
 import SignupScreen from './src/screens/SignupScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -8,11 +15,38 @@ import DisputesScreen from './src/screens/DisputesScreen';
 import CreateDisputeScreen from './src/screens/CreateDisputeScreen';
 import DisputeDetailScreen from './src/screens/DisputeDetailScreen';
 
+
 function App() {
   const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home', 'contacts'
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadFonts() {
+      try {
+        await Font.loadAsync({
+          PlayfairDisplay_400Regular,
+          PlayfairDisplay_500Medium,
+          PlayfairDisplay_600SemiBold,
+          PlayfairDisplay_700Bold,
+          PlayfairDisplay_900Black,
+        });
+        setFontsLoaded(true);
+      } catch (error) {
+        console.error('Error loading fonts:', error);
+        setFontsLoaded(true); // Continue anyway with system fonts
+      }
+    }
+    
+    loadFonts();
+  }, []);
+
+  // Don't render app until fonts are loaded
+  if (!fontsLoaded) {
+    return null; // Or show a loading screen
+  }
 
 
   const handleSignupSuccess = (userData, userToken) => {
@@ -144,7 +178,7 @@ function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F2ED',
   },
 });
 
