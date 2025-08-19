@@ -91,7 +91,7 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F2ED',
   },
   content: {
     flex: 1,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#5A9B9E',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   switchText: {
-    color: '#007AFF',
+    color: '#5A9B9E',
     fontSize: 16,
   },
 });

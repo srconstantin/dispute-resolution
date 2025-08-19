@@ -178,7 +178,7 @@ export default function ContactsScreen({ token, onBack }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F2ED',
   },
   header: {
     flexDirection: 'row',
@@ -187,14 +187,14 @@ const styles = StyleSheet.create({
     paddingVertical: 50,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E8E4DB',
   },
   backButton: {
     marginRight: 15,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#5A9B9E',
   },
   title: {
     fontSize: 20,
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   addButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#5A9B9E',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 20,
@@ -277,14 +277,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   approveButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: '#27AE60',
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
     marginRight: 8,
   },
   rejectButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#E74C3C',
     borderRadius: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,

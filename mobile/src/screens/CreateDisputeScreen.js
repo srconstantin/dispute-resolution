@@ -173,7 +173,7 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F2ED',
   },
   header: {
     flexDirection: 'row',
@@ -182,14 +182,14 @@ const styles = StyleSheet.create({
     paddingVertical: 50,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E8E4DB',
   },
   backButton: {
     marginRight: 15,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#5A9B9E',
   },
   title: {
     fontSize: 20,
@@ -265,8 +265,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
+    backgroundColor: '#5A9B9E',
+    borderColor: '#5A9B9EF',
   },
   checkmark: {
     color: '#fff',

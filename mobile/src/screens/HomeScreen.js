@@ -79,7 +79,7 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F2ED',
   },
   content: {
     flex: 1,
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     textAlign: 'center',
     marginBottom: 10,
-    color: '#007AFF',
+    color: '#5A9B9E',
   },
   email: {
     fontSize: 16,
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoutButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#E74C3C',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   actionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#5A9B9E',
     borderRadius: 12,
     padding: 20,
     marginBottom: 20,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   redDot: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#E74C3C',
     borderRadius: 10,
     minWidth: 20,
     height: 20,

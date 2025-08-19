@@ -146,7 +146,7 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F2ED',
   },
   header: {
     flexDirection: 'row',
@@ -155,14 +155,14 @@ const styles = StyleSheet.create({
     paddingVertical: 50,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#E8E4DB',
   },
   backButton: {
     marginRight: 15,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#5A9B9E',
   },
   title: {
     fontSize: 20,
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#5A9B9E',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -200,15 +200,15 @@ const styles = StyleSheet.create({
     borderColor: '#007AFF',
   },
   invitedDispute: {
-    borderColor: '#FF9500',
+    borderColor: '#F39C12',
     backgroundColor: '#FFF3E0',
   },
   completedDispute: {
-    borderColor: '#34C759',
+    borderColor: '#27AE60',
     backgroundColor: '#F0F9F0',
   },
   rejectedDispute: {
-    borderColor: '#FF3B30',
+    borderColor: '#E74C3C',
     backgroundColor: '#FFF0F0',
     opacity: 0.7,
   },
