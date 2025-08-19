@@ -1,10 +1,16 @@
 {
   "expo": {
-    "name": "Dispute App",
-    "slug": "dispute-app",
+    "name": "FairEnough",
+    "slug": "fairenough", 
     "version": "1.0.0",
     "platforms": ["ios", "android"],
     "orientation": "portrait",
+    "icon": "./assets/bluespiral.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/spiralsplash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F2ED"
+    }
   }
 }
