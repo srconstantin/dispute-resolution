@@ -15,16 +15,19 @@ export const theme = {
     cardBackground: '#F8F9FA' // Light card backgrounds
   },
   
-  fonts: {
-    // Playfair Display hierarchy
-    displayLarge: 'PlayfairDisplay_900Black',
-    heading: 'PlayfairDisplay_700Bold',
-    headingMedium: 'PlayfairDisplay_600SemiBold',
-    headingRegular: 'PlayfairDisplay_500Medium',
-    body: 'PlayfairDisplay_400Regular',
+ fonts: {
+    // Merriweather for headings (trustworthy, readable serif)
+    displayLarge: 'Merriweather_900Black',   // Large display text
+    heading: 'Merriweather_700Bold',         // Main headings (app name, page titles)
+    headingMedium: 'Merriweather_700Bold',   // Section titles
+    headingRegular: 'Merriweather_400Regular', // Subtitles, secondary headings
     
-    // Alternative: mix with system fonts for body text
-    bodySystem: undefined, // Uses system font for readability
+    // Lato for body text (clean, readable sans-serif)
+    body: 'Lato_400Regular',                 // Body text, descriptions
+    bodyBold: 'Lato_700Bold',               // Emphasized body text
+    
+    // Fallback option
+    bodySystem: undefined,                   // Uses system font if needed
   },
 
   shadows: {

@@ -1,12 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import 'react-native-url-polyfill/auto';
+import React, { useState } from 'react';
 import { StyleSheet, SafeAreaView, AppRegistry } from 'react-native';
+import { useFonts } from 'expo-font';
 import { 
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_500Medium,
-  PlayfairDisplay_600SemiBold,
-  PlayfairDisplay_700Bold,
-  PlayfairDisplay_900Black,
-} from '@expo-google-fonts/playfair-display';
+  Merriweather_400Regular,
+  Merriweather_700Bold,
+  Merriweather_900Black,
+} from '@expo-google-fonts/merriweather';
+import { 
+  Lato_400Regular,
+  Lato_700Bold,
+} from '@expo-google-fonts/lato';
 import SignupScreen from './src/screens/SignupScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -21,27 +25,13 @@ function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  useEffect(() => {
-    async function loadFonts() {
-      try {
-        await Font.loadAsync({
-          PlayfairDisplay_400Regular,
-          PlayfairDisplay_500Medium,
-          PlayfairDisplay_600SemiBold,
-          PlayfairDisplay_700Bold,
-          PlayfairDisplay_900Black,
-        });
-        setFontsLoaded(true);
-      } catch (error) {
-        console.error('Error loading fonts:', error);
-        setFontsLoaded(true); // Continue anyway with system fonts
-      }
-    }
-    
-    loadFonts();
-  }, []);
+  const [fontsLoaded] = useFonts({
+    Merriweather_400Regular,
+    Merriweather_700Bold,
+    Merriweather_900Black,
+    Lato_400Regular,
+    Lato_700Bold,
+  });
 
   // Don't render app until fonts are loaded
   if (!fontsLoaded) {

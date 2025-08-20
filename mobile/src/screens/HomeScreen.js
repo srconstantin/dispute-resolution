@@ -5,12 +5,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getContacts, getDisputes } from '../services/api';
 import { theme } from '../styles/theme';
-import TealSpiralLogo from '../components/TealSpiralLogo';
+
 
 export default function HomeScreen({ user, token, onLogout, onNavigateToContacts, onNavigateToDisputes }) {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
@@ -57,7 +58,10 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TealSpiralLogo size={36} />
+         <Image 
+          source={require('../../assets/bluespiral.png')} 
+          style={styles.logoImage}
+          />
           <Text style={styles.appName}>FairEnough</Text>
         </View>
         <TouchableOpacity style={styles.profileButton} onPress={onLogout}>
@@ -175,6 +179,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heading,
     color: theme.colors.text,
     marginLeft: theme.spacing.md,
+  },
+  logoImage: {
+    width: 36,
+    height: 36,
+    marginRight: theme.spacing.md,
   },
   profileButton: {
     width: 36,

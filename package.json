@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@expo-google-fonts/lato": "^0.4.0",
+    "@expo-google-fonts/merriweather": "^0.4.1"
+  }
+}
