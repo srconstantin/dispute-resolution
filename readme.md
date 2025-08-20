@@ -34,9 +34,7 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 --uses participant text in a call to the Claude API to get a verdict on who's in the right/wrong and what should be done to resolve the dispute; saves the verdict to the database; and shows the users the verdict
 
 
-
 ## TODO
---Make more visually appealing (eg format the verdict correctly, size to fit the screen better, maybe pick a non-default font/color scheme)
 
 --Send invite emails to invited contacts
 
