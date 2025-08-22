@@ -53,7 +53,9 @@ Go to https://fairenough.netlify.app/ to use the app
 ## TODO
 
 --Send invite emails to invited contacts
+
 --Allow deleting disputes
+
 --Allow password reset
 
 
