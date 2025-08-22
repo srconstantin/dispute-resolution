@@ -49,10 +49,10 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --uses participant text in a call to the Claude API to get a verdict on who's in the right/wrong and what should be done to resolve the dispute; saves the verdict to the database; and shows the users the verdict
 
+--allows users to invite contacts by email address
 
 ## TODO
 
---Send invite emails to invited contacts
 
 --Allow password reset
 
