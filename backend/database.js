@@ -1,36 +1,38 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
-const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new Database(dbPath);
+// Railway automatically provides DATABASE_URL
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-const initDatabase = () => {
+const initDatabase = async () => {
   console.log('🚀 initDatabase() function called!');
-  console.log('📁 Database path:', dbPath);
+  console.log('📁 Database URL:', process.env.DATABASE_URL ? 'Connected' : 'Missing');
   
   try {
     // Create users table
-    db.exec(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log('✅ Users table created/verified');
 
     // Create contacts table 
-    db.exec(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS contacts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         requester_id INTEGER NOT NULL,
         recipient_id INTEGER,
         recipient_email TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (requester_id) REFERENCES users (id),
         FOREIGN KEY (recipient_id) REFERENCES users (id)
       )
@@ -38,32 +40,32 @@ const initDatabase = () => {
     console.log('✅ Contacts table created/verified');
 
     // Create disputes table
-    db.exec(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS disputes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         title TEXT NOT NULL,
         creator_id INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'ongoing',
         verdict TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (creator_id) REFERENCES users (id)
       )
     `);
     console.log('✅ Disputes table created/verified');
 
     // Create dispute_participants table
-    db.exec(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS dispute_participants (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         dispute_id INTEGER NOT NULL,
         user_id INTEGER NOT NULL,
         status TEXT NOT NULL DEFAULT 'invited',
         response_text TEXT,
-        joined_at DATETIME,
-        response_submitted_at DATETIME,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        joined_at TIMESTAMP,
+        response_submitted_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (dispute_id) REFERENCES disputes (id),
         FOREIGN KEY (user_id) REFERENCES users (id),
         UNIQUE(dispute_id, user_id)
@@ -76,27 +78,25 @@ const initDatabase = () => {
   }
 };
 
-const createUser = (userData, callback) => {
+const createUser = async (userData, callback) => {
   const { name, email, password } = userData;
   
   try {
-    const stmt = db.prepare(`
-      INSERT INTO users (name, email, password) 
-      VALUES (?, ?, ?)
-    `);
-    
-    const result = stmt.run(name, email, password);
-    callback(null, { id: result.lastInsertRowid, name, email });
+    const result = await pool.query(
+      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email',
+      [name, email, password]
+    );
+    callback(null, result.rows[0]);
   } catch (err) {
     callback(err, null);
   }
 };
 
-const getUserByEmail = (email, callback) => {
+const getUserByEmail = async (email, callback) => {
   try {
     console.log('🔍 Looking for user with email:', email);
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const user = stmt.get(email);
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
     console.log('🔍 getUserByEmail result:', user ? 'FOUND' : 'NOT FOUND');
     callback(null, user);
   } catch (err) {
@@ -105,48 +105,50 @@ const getUserByEmail = (email, callback) => {
   }
 };
 
-const createDispute = (disputeData, callback) => {
+const createDispute = async (disputeData, callback) => {
   const { title, creator_id, participant_ids } = disputeData;
 
+  const client = await pool.connect();
+  
   try {
-    db.transaction(() => {
-      // Create dispute
-      const disputeStmt = db.prepare(`
-        INSERT INTO disputes(title, creator_id, status)
-        VALUES (?, ?, 'ongoing')
-      `);
-      const disputeResult = disputeStmt.run(title, creator_id);
-      const dispute_id = disputeResult.lastInsertRowid;
+    await client.query('BEGIN');
+    
+    // Create dispute
+    const disputeResult = await client.query(
+      'INSERT INTO disputes(title, creator_id, status) VALUES ($1, $2, $3) RETURNING id',
+      [title, creator_id, 'ongoing']
+    );
+    const dispute_id = disputeResult.rows[0].id;
 
-      // Add creator as accepted participant
-      const creatorStmt = db.prepare(`
-        INSERT INTO dispute_participants (dispute_id, user_id, status, joined_at)
-        VALUES (?, ?, 'accepted', CURRENT_TIMESTAMP)
-      `);
-      creatorStmt.run(dispute_id, creator_id);
+    // Add creator as accepted participant
+    await client.query(
+      'INSERT INTO dispute_participants (dispute_id, user_id, status, joined_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+      [dispute_id, creator_id, 'accepted']
+    );
 
-      // Add other participants as invited
-      if (participant_ids && participant_ids.length > 0) {
-        const participantStmt = db.prepare(`
-          INSERT INTO dispute_participants (dispute_id, user_id, status)
-          VALUES (?, ?, 'invited')
-        `);
-        
-        participant_ids.forEach(user_id => {
-          participantStmt.run(dispute_id, user_id);
-        });
+    // Add other participants as invited
+    if (participant_ids && participant_ids.length > 0) {
+      for (const user_id of participant_ids) {
+        await client.query(
+          'INSERT INTO dispute_participants (dispute_id, user_id, status) VALUES ($1, $2, $3)',
+          [dispute_id, user_id, 'invited']
+        );
       }
+    }
 
-      callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
-    })();
+    await client.query('COMMIT');
+    callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
   } catch (err) {
+    await client.query('ROLLBACK');
     callback(err, null);
+  } finally {
+    client.release();
   }
 };
 
-const getDisputesByUser = (user_id, callback) => {
+const getDisputesByUser = async (user_id, callback) => {
   try {
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       SELECT DISTINCT 
         d.id,
         d.title,
@@ -159,20 +161,19 @@ const getDisputesByUser = (user_id, callback) => {
       FROM disputes d
       JOIN users u ON d.creator_id = u.id 
       JOIN dispute_participants dp ON d.id = dp.dispute_id
-      WHERE dp.user_id = ?
+      WHERE dp.user_id = $1
       ORDER BY d.created_at DESC
-    `);
+    `, [user_id]);
     
-    const disputes = stmt.all(user_id);
-    callback(null, disputes);
+    callback(null, result.rows);
   } catch (err) {
     callback(err, null);
   }
 };
 
-const getDisputeById = (dispute_id, callback) => {
+const getDisputeById = async (dispute_id, callback) => {
   try {
-    const disputeStmt = db.prepare(`
+    const disputeResult = await pool.query(`
       SELECT
         d.id,
         d.title,
@@ -184,17 +185,17 @@ const getDisputeById = (dispute_id, callback) => {
         u.email as creator_email
       FROM disputes d
       JOIN users u on d.creator_id = u.id 
-      WHERE d.id = ?
-    `);
+      WHERE d.id = $1
+    `, [dispute_id]);
     
-    const dispute = disputeStmt.get(dispute_id);
+    const dispute = disputeResult.rows[0];
     
     if (!dispute) {
       callback(null, null);
       return;
     }
     
-    const participantsStmt = db.prepare(`
+    const participantsResult = await pool.query(`
       SELECT
         dp.user_id,
         dp.status,
@@ -205,145 +206,142 @@ const getDisputeById = (dispute_id, callback) => {
         u.email 
       FROM dispute_participants dp 
       JOIN users u ON dp.user_id = u.id 
-      WHERE dp.dispute_id = ? 
+      WHERE dp.dispute_id = $1 
       ORDER BY dp.created_at ASC
-    `);
+    `, [dispute_id]);
     
-    const participants = participantsStmt.all(dispute_id);
-    dispute.participants = participants;
-    
+    dispute.participants = participantsResult.rows;
     callback(null, dispute);
   } catch (err) {
     callback(err, null);
   }
 };
 
-const updateParticipantStatus = (dispute_id, user_id, status, callback) => {
+const updateParticipantStatus = async (dispute_id, user_id, status, callback) => {
+  const client = await pool.connect();
+  
   try {
-    db.transaction(() => {
-      // Update participant status
-      const updateStmt = db.prepare(`
-        UPDATE dispute_participants 
-        SET status = ?, joined_at = CASE WHEN ? = 'accepted' THEN CURRENT_TIMESTAMP ELSE joined_at END, updated_at = CURRENT_TIMESTAMP
-        WHERE dispute_id = ? AND user_id = ?
-      `);
-      
-      const result = updateStmt.run(status, status, dispute_id, user_id);
-      
-      if (result.changes === 0) {
-        throw new Error('Participant not found');
-      }
-      
-      // If someone rejected, mark the entire dispute as rejected
-      if (status === 'rejected') {
-        const disputeStmt = db.prepare(`
-          UPDATE disputes 
-          SET status = 'rejected', updated_at = CURRENT_TIMESTAMP 
-          WHERE id = ?
-        `);
-        disputeStmt.run(dispute_id);
-      }
-      
-      callback(null, { dispute_id, user_id, status });
-    })();
-  } catch (err) {
-    callback(err, null);
-  }
-};
-
-const submitDisputeResponse = (dispute_id, user_id, response_text, callback) => {
-  try {
-    db.transaction(() => {
-      // Update participant response
-      const updateStmt = db.prepare(`
-        UPDATE dispute_participants 
-        SET response_text = ?, response_submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-        WHERE dispute_id = ? AND user_id = ? AND status = 'accepted'
-      `);
-      
-      const result = updateStmt.run(response_text, dispute_id, user_id);
-      
-      if (result.changes === 0) {
-        throw new Error('Participant not found or not accepted');
-      }
-      
-      // Check if all accepted participants have submitted responses
-      const checkStmt = db.prepare(`
-        SELECT 
-          COUNT(*) as total_participants,
-          SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
-          SUM(CASE WHEN status = 'accepted' AND response_text IS NOT NULL THEN 1 ELSE 0 END) as responded_count,
-          SUM(CASE WHEN status = 'accepted' AND response_text IS NULL THEN 1 ELSE 0 END) as accepted_not_responded,
-          SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as still_invited
-        FROM dispute_participants 
-        WHERE dispute_id = ?
-      `);
-      
-      const checkResult = checkStmt.get(dispute_id);
-      
-      const allInvitationsResolved = checkResult.still_invited === 0;
-      const allAcceptedHaveResponded = checkResult.accepted_not_responded === 0;
-      
-      if (allInvitationsResolved && allAcceptedHaveResponded && checkResult.responded_count > 0) {
-        const disputeStmt = db.prepare(`
-          UPDATE disputes 
-          SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
-          WHERE id = ?
-        `);
-        disputeStmt.run(dispute_id);
-        
-        callback(null, { dispute_id, user_id, response_text, completed: true });
-      } else {
-        callback(null, { dispute_id, user_id, response_text, completed: false });
-      }
-    })();
-  } catch (err) {
-    callback(err, null);
-  }
-};
-
-const updateDisputeVerdict = (dispute_id, verdict, callback) => {
-  try {
-    const stmt = db.prepare(`
-      UPDATE disputes 
-      SET verdict = ?, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `);
+    await client.query('BEGIN');
     
-    const result = stmt.run(verdict, dispute_id);
-    callback(null, { dispute_id, verdict, updated: result.changes > 0 });
+    // Update participant status
+    const result = await client.query(`
+      UPDATE dispute_participants 
+      SET status = $1, joined_at = CASE WHEN $1 = 'accepted' THEN CURRENT_TIMESTAMP ELSE joined_at END, updated_at = CURRENT_TIMESTAMP
+      WHERE dispute_id = $2 AND user_id = $3
+    `, [status, dispute_id, user_id]);
+    
+    if (result.rowCount === 0) {
+      throw new Error('Participant not found');
+    }
+    
+    // If someone rejected, mark the entire dispute as rejected
+    if (status === 'rejected') {
+      await client.query(`
+        UPDATE disputes 
+        SET status = 'rejected', updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $1
+      `, [dispute_id]);
+    }
+    
+    await client.query('COMMIT');
+    callback(null, { dispute_id, user_id, status });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    callback(err, null);
+  } finally {
+    client.release();
+  }
+};
+
+const submitDisputeResponse = async (dispute_id, user_id, response_text, callback) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Update participant response
+    const result = await client.query(`
+      UPDATE dispute_participants 
+      SET response_text = $1, response_submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+      WHERE dispute_id = $2 AND user_id = $3 AND status = 'accepted'
+    `, [response_text, dispute_id, user_id]);
+    
+    if (result.rowCount === 0) {
+      throw new Error('Participant not found or not accepted');
+    }
+    
+    // Check if all accepted participants have submitted responses
+    const checkResult = await client.query(`
+      SELECT 
+        COUNT(*) as total_participants,
+        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
+        SUM(CASE WHEN status = 'accepted' AND response_text IS NOT NULL THEN 1 ELSE 0 END) as responded_count,
+        SUM(CASE WHEN status = 'accepted' AND response_text IS NULL THEN 1 ELSE 0 END) as accepted_not_responded,
+        SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as still_invited
+      FROM dispute_participants 
+      WHERE dispute_id = $1
+    `, [dispute_id]);
+    
+    const checkData = checkResult.rows[0];
+    const allInvitationsResolved = parseInt(checkData.still_invited) === 0;
+    const allAcceptedHaveResponded = parseInt(checkData.accepted_not_responded) === 0;
+    
+    if (allInvitationsResolved && allAcceptedHaveResponded && parseInt(checkData.responded_count) > 0) {
+      await client.query(`
+        UPDATE disputes 
+        SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $1
+      `, [dispute_id]);
+      
+      await client.query('COMMIT');
+      callback(null, { dispute_id, user_id, response_text, completed: true });
+    } else {
+      await client.query('COMMIT');
+      callback(null, { dispute_id, user_id, response_text, completed: false });
+    }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    callback(err, null);
+  } finally {
+    client.release();
+  }
+};
+
+const updateDisputeVerdict = async (dispute_id, verdict, callback) => {
+  try {
+    const result = await pool.query(`
+      UPDATE disputes 
+      SET verdict = $1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2
+    `, [verdict, dispute_id]);
+    
+    callback(null, { dispute_id, verdict, updated: result.rowCount > 0 });
   } catch (err) {
     callback(err, null);
   }
 };
 
-const createContactRequest = (requesterEmail, recipientEmail, callback) => {
+const createContactRequest = async (requesterEmail, recipientEmail, callback) => {
   try {
     // Get the requester
-    const requesterStmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const requester = requesterStmt.get(requesterEmail);
+    const requesterResult = await pool.query('SELECT * FROM users WHERE email = $1', [requesterEmail]);
+    const requester = requesterResult.rows[0];
     
     if (!requester) {
       return callback(new Error('Requester not found'), null);
     }
 
     // Check if recipient exists
-    const recipientStmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const recipient = recipientStmt.get(recipientEmail);
+    const recipientResult = await pool.query('SELECT * FROM users WHERE email = $1', [recipientEmail]);
+    const recipient = recipientResult.rows[0];
     
-    const insertStmt = db.prepare(`
+    const insertResult = await pool.query(`
       INSERT INTO contacts (requester_id, recipient_id, recipient_email, status) 
-      VALUES (?, ?, ?, 'pending')
-    `);
-    
-    const result = insertStmt.run(
-      requester.id, 
-      recipient ? recipient.id : null, 
-      recipientEmail
-    );
+      VALUES ($1, $2, $3, 'pending') RETURNING id
+    `, [requester.id, recipient ? recipient.id : null, recipientEmail]);
     
     callback(null, { 
-      id: result.lastInsertRowid, 
+      id: insertResult.rows[0].id, 
       requesterEmail, 
       recipientEmail,
       recipientExists: !!recipient,
@@ -354,40 +352,40 @@ const createContactRequest = (requesterEmail, recipientEmail, callback) => {
   }
 };
 
-const getUserContacts = (userEmail, callback) => {
+const getUserContacts = async (userEmail, callback) => {
   try {
-    const userStmt = db.prepare('SELECT * FROM users WHERE email = ?');
-    const user = userStmt.get(userEmail);
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [userEmail]);
+    const user = userResult.rows[0];
     
     if (!user) {
       return callback(new Error('User not found'), null);
     }
 
     // Get accepted contacts
-    const contactsStmt = db.prepare(`
+    const contactsResult = await pool.query(`
       SELECT 
         c.id,
         c.status,
         c.created_at,
         CASE 
-          WHEN c.requester_id = ? THEN ru.name 
+          WHEN c.requester_id = $1 THEN ru.name 
           ELSE rq.name 
         END as contact_name,
         CASE 
-          WHEN c.requester_id = ? THEN ru.email 
+          WHEN c.requester_id = $1 THEN ru.email 
           ELSE rq.email 
         END as contact_email
       FROM contacts c
       LEFT JOIN users rq ON c.requester_id = rq.id
       LEFT JOIN users ru ON c.recipient_id = ru.id
-      WHERE (c.requester_id = ? OR c.recipient_id = ?) 
+      WHERE (c.requester_id = $1 OR c.recipient_id = $1) 
         AND c.status = 'accepted'
-    `);
+    `, [user.id]);
     
-    const contacts = contactsStmt.all(user.id, user.id, user.id, user.id);
+    const contacts = contactsResult.rows;
 
     // Get pending requests
-    const pendingStmt = db.prepare(`
+    const pendingResult = await pool.query(`
       SELECT 
         c.id,
         c.status,
@@ -396,10 +394,10 @@ const getUserContacts = (userEmail, callback) => {
         rq.email as requester_email
       FROM contacts c
       JOIN users rq ON c.requester_id = rq.id
-      WHERE c.recipient_id = ? AND c.status = 'pending'
-    `);
+      WHERE c.recipient_id = $1 AND c.status = 'pending'
+    `, [user.id]);
     
-    const pendingRequests = pendingStmt.all(user.id);
+    const pendingRequests = pendingResult.rows;
     
     callback(null, { contacts, pendingRequests });
   } catch (err) {
@@ -407,16 +405,15 @@ const getUserContacts = (userEmail, callback) => {
   }
 };
 
-const updateContactRequest = (requestId, status, callback) => {
+const updateContactRequest = async (requestId, status, callback) => {
   try {
-    const stmt = db.prepare(`
+    const result = await pool.query(`
       UPDATE contacts 
-      SET status = ?, updated_at = CURRENT_TIMESTAMP 
-      WHERE id = ?
-    `);
+      SET status = $1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = $2
+    `, [status, requestId]);
     
-    const result = stmt.run(status, requestId);
-    callback(null, { id: requestId, status, updated: result.changes > 0 });
+    callback(null, { id: requestId, status, updated: result.rowCount > 0 });
   } catch (err) {
     callback(err, null);
   }
@@ -436,11 +433,10 @@ const checkAndGenerateVerdict = async (disputeId, callback) => {
       // 3. Generate verdict using Claude
       const verdict = await generateVerdict(disputeData);
       
-      // 4. Save verdict to database (converted to better-sqlite3 syntax)
-      const stmt = db.prepare(`UPDATE disputes SET verdict = ?, status = 'resolved' WHERE id = ?`);
-      const result = stmt.run(verdict, disputeId);
+      // 4. Save verdict to database
+      const result = await pool.query(`UPDATE disputes SET verdict = $1, status = 'resolved' WHERE id = $2`, [verdict, disputeId]);
       
-      callback(null, { disputeId, verdict, updated: result.changes > 0 });
+      callback(null, { disputeId, verdict, updated: result.rowCount > 0 });
     }
   } catch (err) {
     callback(err, null);

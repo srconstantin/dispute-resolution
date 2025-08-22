@@ -15,12 +15,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-app.listen(PORT, () => {
-  console.log(`🚀 DEBUG SERVER with logging enabled - running on port ${PORT}`);
+//Request logging
+app.use((req, res, next) => {
+  console.log('📝 REQUEST:', req.method, req.path);
+  next();
 });
 
-// Initialize database
-initDatabase();
+
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -35,5 +36,9 @@ app.get('/api/health', (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`DEBUG SERVER with logging enabled --  running on port ${PORT}`);
+
+// Initialize database
+  await initDatabase();
+
 });
