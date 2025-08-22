@@ -34,11 +34,12 @@ app.get('/api/health', (req, res) => {
 });
 
 
-
-app.listen(PORT, () => {
-  console.log(`DEBUG SERVER with logging enabled --  running on port ${PORT}`);
-
 // Initialize database
-  await initDatabase();
-
+initDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`DEBUG SERVER with logging enabled -- running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
 });
+
