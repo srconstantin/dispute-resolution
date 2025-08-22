@@ -35,7 +35,7 @@ router.get('/', authenticateToken, (req, res) => {
 });
 
 // Send contact request
-router.post('/request', authenticateToken, (req, res) => {
+router.post('/request', authenticateToken, async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
