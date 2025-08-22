@@ -4,6 +4,22 @@ This is an LLM-powered dispute resolution app. Think of it as a tool for interpe
 
 Structurally, a "dispute" has two or more participants, each of whom submits text (representing their side of the story.) Dispute participants can only see their own text. When all participants have submitted text, an LLM will use the text to generate a "verdict" (an assessment of who, if anyone, is in the right or in the wrong, and what should be done about the problem now.) All participants will see the verdict, and the dispute will be marked complete. 
 
+## Download Instructions
+
+### Web Browser
+Go to https://fairenough.netlify.app/ to use the app
+
+### iOS
+
+1. Go to https://fairenough.netlify.app/ in Safari
+2. Tap the "share" button (square with arrow)
+3. Scroll down and tap "add to home screen"
+
+### Android
+
+1. Go to https://expo.dev/accounts/srconstantin/projects/fairenough/builds/c327c8cb-1e13-428e-b30c-f80707f584c0 to download the app
+
+
 ## Setup Instructions
 
 ### Backend Setup
@@ -38,7 +54,6 @@ Structurally, a "dispute" has two or more participants, each of whom submits tex
 
 --Send invite emails to invited contacts
 
---Switch to hosting on the cloud
 
 
 
