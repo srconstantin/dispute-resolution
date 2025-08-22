@@ -22,7 +22,11 @@ router.post('/signup', async (req, res) => {
 
     // Check if user already exists
     getUserByEmail(email, async (err, existingUser) => {
+      console.log('🔍 getUserByEmail result:', { err, user: user ? 'FOUND' : 'NOT FOUND' });
+    
       if (err) {
+        console.error('❌ Database error:', err);
+
         return res.status(500).json({ error: 'Database error' });
       }
 
@@ -48,6 +52,7 @@ router.post('/signup', async (req, res) => {
             { expiresIn: '7d' }
           );
 
+          console.log('🎉 Login successful for user:', user.id);
           res.status(201).json({
             message: 'User created successfully',
             user: { id: user.id, name: user.name, email: user.email },

@@ -15,7 +15,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-
+app.use((req, res, next) => {
+  console.log('🌐 Request:', req.method, req.path, 'from', req.ip);
+  next();
+});
 
 // Initialize database
 initDatabase();

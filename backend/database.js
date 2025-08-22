@@ -5,6 +5,9 @@ const dbPath = path.join(__dirname, 'database.sqlite');
 const db = new sqlite3.Database(dbPath);
 
 const initDatabase = () => {
+  console.log('🚀 initDatabase() function called!');
+  console.log('📁 Database path:', dbPath);
+
   db.serialize(() => {
     // Create users table
     db.run(`
