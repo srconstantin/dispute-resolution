@@ -20,7 +20,7 @@ Go to https://fairenough.netlify.app/ to use the app
 1. Go to https://expo.dev/accounts/srconstantin/projects/fairenough/builds/c327c8cb-1e13-428e-b30c-f80707f584c0 to download the app
 
 
-## Setup Instructions
+## Local Setup Instructions
 
 ### Backend Setup
 1. Navigate to backend folder: `cd backend`
