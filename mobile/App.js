@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import React, { useState } from 'react';
-import { StyleSheet, SafeAreaView, AppRegistry } from 'react-native';
+import { StyleSheet, SafeAreaView, View, Text, Platform, AppRegistry } from 'react-native';
 import { useFonts } from 'expo-font';
 import { 
   Merriweather_400Regular,
@@ -173,5 +173,12 @@ const styles = StyleSheet.create({
 });
 
 AppRegistry.registerComponent('main', () => App);
+
+if (typeof window !== 'undefined') {
+  console.log('Mounting FairEnough app for web...');
+  AppRegistry.runApplication('main', {
+    rootTag: document.getElementById('root'),
+  });
+}
 
 export default App;

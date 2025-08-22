@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "platforms": [
       "ios",
-      "android"
+      "android",
+      "web"
     ],
     "orientation": "portrait",
     "icon": "./assets/bluespiral.png",
@@ -17,6 +18,24 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "005b2f3f-3284-439f-ba29-c85599c06085"
+      }
+    },
+    "android": {
+      "package": "com.srconstantin.fairenough"
+    },
+    "ios": {
+      "bundleIdentifier": "com.srconstantin.fairenough",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+    "web": {
+      "favicon": "./assets/bluespiral.png",
+      "bundler": "metro"
+    }
+  }
   }
 }
