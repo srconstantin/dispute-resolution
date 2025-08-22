@@ -54,10 +54,11 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --Send invite emails to invited contacts
 
---Allow deleting disputes
-
 --Allow password reset
 
+--Display error if login/signup fails
+
+--(Maybe) allow deleting disputes
 
 
 
