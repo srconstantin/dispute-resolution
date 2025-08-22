@@ -22,7 +22,7 @@ router.post('/signup', async (req, res) => {
 
     // Check if user already exists
     getUserByEmail(email, async (err, existingUser) => {
-      console.log('🔍 getUserByEmail result:', { err, user: user ? 'FOUND' : 'NOT FOUND' });
+      console.log('🔍 getUserByEmail result:', { err, user: existingUser ? 'FOUND' : 'NOT FOUND' });
     
       if (err) {
         console.error('❌ Database error:', err);
