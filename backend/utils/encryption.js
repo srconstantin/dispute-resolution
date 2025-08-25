@@ -36,17 +36,17 @@ class DatabaseEncryption {
       // Create cipher
       const cipher = crypto.createCipheriv(this.algorithm, this.masterKey, iv);
       
-      // Encrypt the plaintext
-      let encrypted = cipher.update(plaintext, 'utf8', 'hex');
-      encrypted += cipher.final('hex');
+   // Encrypt the plaintext - keep as Buffer, don't convert to hex yet
+    let encrypted = cipher.update(plaintext, 'utf8');
+    const final = cipher.final();
+    encrypted = Buffer.concat([encrypted, final]);
 
-      // Get the authentication tag - CRITICAL for GCM!
-      const tag = cipher.getAuthTag();
+    // Get the authentication tag
+    const tag = cipher.getAuthTag();
     
-      
-      // Combine IV + tag + encrypted data
-      const combined = Buffer.concat([iv, tag, encrypted]);
-      return combined.toString('hex');      
+    // Combine IV + tag + encrypted data (all Buffers)
+    const combined = Buffer.concat([iv, tag, encrypted]);
+    return combined.toString('hex'); 
       
     } catch (error) {
       console.error('Encryption error:', error);
