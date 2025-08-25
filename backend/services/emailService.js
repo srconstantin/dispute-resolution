@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 const createTransporter = () => {
   // Option 1: Gmail (requires app password)
   if (process.env.EMAIL_PROVIDER === 'gmail') {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.GMAIL_USER,
@@ -15,7 +15,7 @@ const createTransporter = () => {
   
   // Option 2: SendGrid
   if (process.env.EMAIL_PROVIDER === 'sendgrid') {
-    return nodemailer.createTransporter({
+    return nodemailer.createTransport({
       service: 'SendGrid',
       auth: {
         user: 'apikey',
@@ -25,7 +25,7 @@ const createTransporter = () => {
   }
   
   // Option 3: Custom SMTP (works with most providers)
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT || 587,
     secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
@@ -38,7 +38,7 @@ const createTransporter = () => {
 
 const sendInvitationEmail = async (inviterName, inviterEmail, recipientEmail) => {
   try {
-    const transporter = createTransporter();
+    const transporter = createTransport();
     
     const mailOptions = {
       from: process.env.FROM_EMAIL || inviterEmail,
