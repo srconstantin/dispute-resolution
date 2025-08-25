@@ -57,9 +57,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
-
---fix email message to invited contacts
-
 --encrypt database
 
 --display success/failure to user after taking actions
