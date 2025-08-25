@@ -600,6 +600,7 @@ const checkAndGenerateVerdict = async (disputeId, callback) => {
 };
 
 module.exports = {
+  pool,
   initDatabase,
   createUser,
   getUserByEmail,

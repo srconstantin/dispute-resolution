@@ -34,18 +34,17 @@ class DatabaseEncryption {
       const iv = crypto.randomBytes(this.ivLength);
       
       // Create cipher
-      const cipher = crypto.createCipherGCM(this.algorithm, this.masterKey, iv);
+      const cipher = crypto.createCipheriv(this.algorithm, this.masterKey, iv);
       
       // Encrypt the plaintext
-      let encrypted = cipher.update(plaintext, 'utf8');
-      cipher.final();
+      let encrypted = cipher.update(plaintext, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+    
       
-      // Get authentication tag
-      const tag = cipher.getAuthTag();
+      // Combine IV + encrypted data
+      const combined = iv.toString('hex') + encrypted;
+      return combined;
       
-      // Combine IV + tag + encrypted data and convert to hex
-      const combined = Buffer.concat([iv, tag, encrypted]);
-      return combined.toString('hex');
       
     } catch (error) {
       console.error('Encryption error:', error);
@@ -59,21 +58,19 @@ class DatabaseEncryption {
     }
 
     try {
-      // Convert from hex to buffer
-      const combined = Buffer.from(encryptedData, 'hex');
+      // Extract IV and encrypted data
+      const ivHex = encryptedData.slice(0, this.ivLength * 2);
+      const encrypted = encryptedData.slice(this.ivLength * 2);
       
-      // Extract IV, tag, and encrypted data
-      const iv = combined.subarray(0, this.ivLength);
-      const tag = combined.subarray(this.ivLength, this.ivLength + this.tagLength);
-      const encrypted = combined.subarray(this.ivLength + this.tagLength);
+      const iv = Buffer.from(ivHex, 'hex');
       
-      // Create decipher
-      const decipher = crypto.createDecipherGCM(this.algorithm, this.masterKey, iv);
-      decipher.setAuthTag(tag);
+      // Use the CORRECT modern Node.js crypto API
+      const decipher = crypto.createDecipheriv(this.algorithm, this.masterKey, iv);
+  
       
       // Decrypt
-      let decrypted = decipher.update(encrypted, null, 'utf8');
-      decipher.final();
+      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+      decipher.final('utf8');
       
       return decrypted;
       

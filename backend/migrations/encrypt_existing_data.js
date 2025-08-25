@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const { pool } = require('../database');
 const encryption = require('../utils/encryption');
 
