@@ -60,11 +60,13 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --fix email message to invited contacts
 
---Display success/failure to user with login, adding contacts, etc
+--encrypt database
 
---encrypt personal information
+--display success/failure to user after taking actions
 
---Allow password reset
+--don't log out upon clicking user profile
+
+--allow password reset
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
