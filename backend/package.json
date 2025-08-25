@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "build": "npm rebuild"
+    "build": "npm rebuild",
+    "migrate-encryption": "node migrations/encrypt_existing_data.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
