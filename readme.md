@@ -58,15 +58,13 @@ Go to https://fairenough.netlify.app/ to use the app
 ## TODO
 
 
---Allow password reset
+--fix email message to invited contacts
 
 --Display success/failure to user with login, adding contacts, etc
 
---(Maybe) allow deleting disputes
+--encrypt personal information
 
---fix email message to invited contacts
-
---check for database security
+--Allow password reset
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
