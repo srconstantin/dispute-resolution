@@ -39,12 +39,14 @@ class DatabaseEncryption {
       // Encrypt the plaintext
       let encrypted = cipher.update(plaintext, 'utf8', 'hex');
       encrypted += cipher.final('hex');
+
+      // Get the authentication tag - CRITICAL for GCM!
+      const tag = cipher.getAuthTag();
     
       
-      // Combine IV + encrypted data
-      const combined = iv.toString('hex') + encrypted;
-      return combined;
-      
+      // Combine IV + tag + encrypted data
+      const combined = Buffer.concat([iv, tag, encrypted]);
+      return combined.toString('hex');      
       
     } catch (error) {
       console.error('Encryption error:', error);
@@ -58,19 +60,23 @@ class DatabaseEncryption {
     }
 
     try {
-      // Extract IV and encrypted data
-      const ivHex = encryptedData.slice(0, this.ivLength * 2);
-      const encrypted = encryptedData.slice(this.ivLength * 2);
+
+      // Convert from hex to buffer
+      const combined = Buffer.from(encryptedData, 'hex');
+
+      const iv = combined.subarray(0, this.ivLength);
+      const tag = combined.subarray(this.ivLength, this.ivLength + this.tagLength);
+      const encrypted = combined.subarray(this.ivLength + this.tagLength);
       
-      const iv = Buffer.from(ivHex, 'hex');
-      
-      // Use the CORRECT modern Node.js crypto API
+    // Create GCM decipher
       const decipher = crypto.createDecipheriv(this.algorithm, this.masterKey, iv);
-  
+      
+      // Set the authentication tag - CRITICAL for GCM!
+      decipher.setAuthTag(tag);
       
       // Decrypt
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decipher.final('utf8');
+      let decrypted = decipher.update(encrypted, null, 'utf8');
+      decipher.final();
       
       return decrypted;
       
