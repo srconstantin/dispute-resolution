@@ -37,9 +37,16 @@ const createTransporter = () => {
 };
 
 const sendInvitationEmail = async (inviterName, inviterEmail, recipientEmail) => {
+  console.log('🔍 Debug - Email credentials:');
+  console.log('EMAIL_PROVIDER:', process.env.EMAIL_PROVIDER);
+  console.log('GMAIL_USER:', process.env.GMAIL_USER);
+  console.log('GMAIL_APP_PASSWORD length:', process.env.GMAIL_APP_PASSWORD ? process.env.GMAIL_APP_PASSWORD.length : 'undefined');
+  console.log('FROM_EMAIL:', process.env.FROM_EMAIL);
+
   try {
     const transporter = createTransporter();
     
+
     const mailOptions = {
       from: process.env.FROM_EMAIL || inviterEmail,
       to: recipientEmail,
