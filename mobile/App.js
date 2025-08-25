@@ -18,6 +18,7 @@ import ContactsScreen from './src/screens/ContactsScreen';
 import DisputesScreen from './src/screens/DisputesScreen';
 import CreateDisputeScreen from './src/screens/CreateDisputeScreen';
 import DisputeDetailScreen from './src/screens/DisputeDetailScreen';
+import LeaderboardScreen from './src/screens/LeaderboardScreen';
 
 
 function App() {
@@ -32,6 +33,16 @@ function App() {
     Lato_400Regular,
     Lato_700Bold,
   });
+
+  // Simple URL-based routing for web: /leaderboard bypasses auth screens
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path === '/leaderboard') {
+        setCurrentScreen('leaderboard');
+      }
+    }
+  }, []);
 
   // Don't render app until fonts are loaded
   if (!fontsLoaded) {
@@ -159,6 +170,17 @@ function App() {
           currentUserId={user?.id}
           onBack={handleBackToDisputes}
           onDisputeUpdated={handleDisputeUpdated}
+        />
+      )}
+
+      {currentScreen === 'leaderboard' && (
+        <LeaderboardScreen 
+          onBack={() => {
+            setCurrentScreen('signup');
+            if (typeof window !== 'undefined') {
+              window.history.pushState(null, '', '/');
+            }
+          }}
         />
       )}
     </SafeAreaView>
