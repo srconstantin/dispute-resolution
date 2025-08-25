@@ -38,7 +38,7 @@ const createTransporter = () => {
 
 const sendInvitationEmail = async (inviterName, inviterEmail, recipientEmail) => {
   try {
-    const transporter = createTransport();
+    const transporter = createTransporter();
     
     const mailOptions = {
       from: process.env.FROM_EMAIL || inviterEmail,
