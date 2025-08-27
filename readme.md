@@ -58,7 +58,11 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --display success/failure to user after taking actions
 
---allow password reset
+--fix fonts on signup screen
+
+--allow password reset?
+
+
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
