@@ -25,6 +25,9 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
 
     setLoading(true);
     try {
+      console.log('=== ATTEMPTING LOGIN ===');
+      console.log('Email:', email);
+      console.log('Password length:', password.length);
       const result = await loginUser({ email, password });
       console.log('Login successful:', result);
       
@@ -33,8 +36,14 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
       setEmail('');
       setPassword('');
     } catch (error) {
-      console.log('Login error:', error);
-      Alert.alert('Error', error.message || 'Failed to login');
+      console.log('=== LOGIN ERROR CAUGHT ===');
+      console.log('Error object:', error);
+      console.log('Error message:', error.message);
+      console.log('Error type:', typeof error);
+   // Force show an alert to test if Alert.alert works at all
+      console.log('About to show Alert.alert...');
+      Alert.alert('DEBUG', `Error caught: ${error.message || 'Unknown error'}`);
+      console.log('Alert.alert called');
     } finally {
       setLoading(false);
     }
