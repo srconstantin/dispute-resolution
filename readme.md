@@ -4,9 +4,8 @@ This is an LLM-powered dispute resolution app. Think of it as a tool for interpe
 
 Structurally, a "dispute" has two or more participants, each of whom submits text (representing their side of the story.) Dispute participants can only see their own text. When all participants have submitted text, an LLM will use the text to generate a "verdict" (an assessment of who, if anyone, is in the right or in the wrong, and what should be done about the problem now.) All participants will see the verdict, and the dispute will be marked complete. 
 
-Warning: DO NOT put any private information into the app at this point, as it is likely insecure.
-
-If you are testing it, it's probably better to use fictional dispute scenarios.
+Warning: Please be careful about putting private information on the app. 
+The database is encrypted but I do store the encryption keys as environment variables; i.e. *in principle* I would be able to access your username, email address, and dispute contents. I have no intention of doing this. But just to be safe, please don't input any real personal information that you'd be uncomfortable with a stranger seeing. 
 
 ## Download Instructions
 
@@ -57,11 +56,7 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---encrypt database
-
 --display success/failure to user after taking actions
-
---don't log out upon clicking user profile
 
 --allow password reset
 
