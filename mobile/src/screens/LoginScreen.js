@@ -18,10 +18,14 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
+    console.log('🟢 BUTTON WAS PRESSED!');
     if (!email || !password) {
+      console.log('🟡 Missing fields');
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+
+  console.log('🟢 About to start login process');
 
     setLoading(true);
     try {
