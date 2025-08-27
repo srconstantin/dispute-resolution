@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { loginUser } from '../services/api';
 import { theme } from '../styles/theme';
+import { showAlert, showError } from '../utils/alert';
 
 export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
     console.log('🟢 BUTTON WAS PRESSED!');
     if (!email || !password) {
       console.log('🟡 Missing fields');
-      Alert.alert('Error', 'Please fill in all fields');
+      showError('Please fill in all fields');
       return;
     }
 
@@ -40,14 +41,8 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
       setEmail('');
       setPassword('');
     } catch (error) {
-      console.log('=== LOGIN ERROR CAUGHT ===');
-      console.log('Error object:', error);
-      console.log('Error message:', error.message);
-      console.log('Error type:', typeof error);
-   // Force show an alert to test if Alert.alert works at all
-      console.log('About to show Alert.alert...');
-      Alert.alert('DEBUG', `Error caught: ${error.message || 'Unknown error'}`);
-      console.log('Alert.alert called');
+      console.log('Login error:', error);
+      showError(error.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
