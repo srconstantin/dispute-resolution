@@ -64,9 +64,9 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
           />
           <Text style={styles.appName}>FairEnough</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton} onPress={onLogout}>
+        <View style={styles.profileButton}>
           <Text style={styles.profileText}>{getInitials(user?.name)}</Text>
-        </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
