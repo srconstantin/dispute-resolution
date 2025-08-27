@@ -19,34 +19,39 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    console.log('🟢 BUTTON WAS PRESSED!');
-    if (!email || !password) {
-      console.log('🟡 Missing fields');
-      showError('Please fill in all fields');
-      return;
-    }
+  alert('🚨 NEW CODE IS LOADED! 🚨');
+  return; // Don't do anything else, just test this
+};
 
-  console.log('🟢 About to start login process');
+  //const handleLogin = async () => {
+    //console.log('🟢 BUTTON WAS PRESSED!');
+    //if (!email || !password) {
+      //console.log('🟡 Missing fields');
+      //showError('Please fill in all fields');
+      //return;
+    //}
 
-    setLoading(true);
-    try {
-      console.log('=== ATTEMPTING LOGIN ===');
-      console.log('Email:', email);
-      console.log('Password length:', password.length);
-      const result = await loginUser({ email, password });
-      console.log('Login successful:', result);
+    //console.log('🟢 About to start login process');
+
+    //setLoading(true);
+    //try {
+      //console.log('=== ATTEMPTING LOGIN ===');
+      //console.log('Email:', email);
+      //console.log('Password length:', password.length);
+      //const result = await loginUser({ email, password });
+      //console.log('Login successful:', result);
       
-      onLoginSuccess(result.user, result.token);
+     // onLoginSuccess(result.user, result.token);
       
-      setEmail('');
-      setPassword('');
-    } catch (error) {
-      console.log('Login error:', error);
-      showError(error.message || 'Failed to login');
-    } finally {
-      setLoading(false);
-    }
-  };
+     // setEmail('');
+     // setPassword('');
+    //} catch (error) {
+      //console.log('Login error:', error);
+      //showError(error.message || 'Failed to login');
+    //} finally {
+      //setLoading(false);
+    //}
+  //};
 
   return (
     <KeyboardAvoidingView 
