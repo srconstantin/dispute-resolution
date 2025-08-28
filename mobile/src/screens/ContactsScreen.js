@@ -13,6 +13,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getContacts, sendContactRequest, approveContactRequest, rejectContactRequest } from '../services/api';
 import { theme } from '../styles/theme';
+import { Toast } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function ContactsScreen({ token, onBack }) {
   const [contacts, setContacts] = useState([]);
@@ -20,6 +22,8 @@ export default function ContactsScreen({ token, onBack }) {
   const [newContactEmail, setNewContactEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { toast, showSuccess, showError, hideToast } = useToast();
+
 
   useEffect(() => {
     loadContacts();
@@ -31,23 +35,24 @@ export default function ContactsScreen({ token, onBack }) {
       setContacts(data.contacts || []);
       setPendingRequests(data.pendingRequests || []);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load contacts');
+      showError('Failed to load contacts');
     }
   };
 
   const handleAddContact = async () => {
     if (!newContactEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
+      showError('Please enter an email address')
       return;
     }
+
     setLoading(true);
     try {
       const result = await sendContactRequest(newContactEmail.trim(), token);
-      Alert.alert('Success', result.message);
+      showSuccess('Contact invitation sent successfully');
       setNewContactEmail('');
       loadContacts();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to send contact invitation');
     } finally {
       setLoading(false);
     }
@@ -56,20 +61,20 @@ export default function ContactsScreen({ token, onBack }) {
   const handleApproveRequest = async (requestId) => {
     try {
       await approveContactRequest(requestId, token);
-      Alert.alert('Success', 'Contact request approved');
+      showSuccess('Contact request approved');
       loadContacts();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to approve contact request');
     }
   };
 
   const handleRejectRequest = async (requestId) => {
     try {
       await rejectContactRequest(requestId, token);
-      Alert.alert('Success', 'Contact request rejected');
+      showSuccess('Contact request rejected');
       loadContacts();
     } catch (error) {
-      Alert.alert('Error', error.message);
+      showError(error.message || 'Failed to reject contact request');
     }
   };
 
@@ -113,6 +118,12 @@ export default function ContactsScreen({ token, onBack }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />

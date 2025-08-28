@@ -15,12 +15,15 @@ import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
 import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse } from '../services/api';
 import { theme } from '../styles/theme';
+import { Toast } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function DisputeDetailScreen({ disputeId, token, currentUserId, onBack, onDisputeUpdated }) {
   const [dispute, setDispute] = useState(null);
   const [responseText, setResponseText] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   useEffect(() => {
     loadDisputeDetails();
@@ -36,7 +39,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
         setResponseText(currentUserParticipant.response_text);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load dispute details');
+      showError('Failed to load dispute details');
       console.error('Error loading dispute:', error);
     } finally {
       setLoading(false);
@@ -47,11 +50,11 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
     try {
       setSubmitting(true);
       await joinDispute(disputeId, token);
-      Alert.alert('Success', 'You have joined the dispute');
+      showSuccess('You have joined the dispute!')
       loadDisputeDetails();
       onDisputeUpdated?.();
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to join dispute');
+      showError(error.message || 'Failed to join dispute');
     } finally {
       setSubmitting(false);
     }
@@ -70,11 +73,11 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
             try {
               setSubmitting(true);
               await rejectDispute(disputeId, token);
-              Alert.alert('Success', 'You have rejected the dispute');
+              showSuccess('You have rejected the dispute!');
               loadDisputeDetails();
               onDisputeUpdated?.();
             } catch (error) {
-              Alert.alert('Error', error.message || 'Failed to reject dispute');
+              showError(error.message || 'Failed to reject dispute');
             } finally {
               setSubmitting(false);
             }
@@ -86,7 +89,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
 
   const handleSubmitResponse = async () => {
     if (!responseText.trim()) {
-      Alert.alert('Error', 'Please enter your response');
+      showError('Please enter your response');
       return;
     }
 
@@ -95,15 +98,15 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       const result = await submitDisputeResponse(disputeId, responseText.trim(), token);
       
       if (result.result.completed) {
-        Alert.alert('Success', 'Response submitted! All participants have responded - dispute is now completed.');
+        showSuccess('Response submitted! All participants have responded - dispute is now completed.');
       } else {
-        Alert.alert('Success', 'Response submitted successfully');
+        showSuccess('Response submitted successfully');
       }
       
       loadDisputeDetails();
       onDisputeUpdated?.();
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to submit response');
+      showError(error.message || 'Failed to submit response');
     } finally {
       setSubmitting(false);
     }
@@ -172,6 +175,13 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
 
   return (
     <SafeAreaView style={styles.container}>
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+
       <KeyboardAvoidingView 
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

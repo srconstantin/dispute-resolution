@@ -10,16 +10,19 @@ import {
   Platform
 } from 'react-native';
 import { createUser } from '../services/api';
+import { Toast } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function SignupScreen({ onSignupSuccess, onSwitchToLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   const handleSignup = async () => {
     if (!email || !password || !name) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showError('Please fill in all fields');
       return;
     }
 
@@ -28,7 +31,7 @@ export default function SignupScreen({ onSignupSuccess, onSwitchToLogin }) {
       console.log('Attempting to create user...'); // Debug log
       const result = await createUser({ email, password, name });
       console.log('User created:', result); // Debug log
-      Alert.alert('Success', `Account created! Welcome ${result.user.name}`);
+      showSuccess(`Welcome ${result.user.name}! Account created successfully. `);
       onSignupSuccess(result.user, result.token);
 
       
@@ -38,65 +41,74 @@ export default function SignupScreen({ onSignupSuccess, onSwitchToLogin }) {
       setName('');
     } catch (error) {
       console.log('Error creating user:', error); // Debug log
-      Alert.alert('Error', error.message || 'Failed to create account');
+      showError(error.message || 'Failed to create account');
+
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>Create Account</Text>
+    <View style={styles.container}>
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      <KeyboardAvoidingView 
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Create Account</Text>
         
-        <TextInput
-          style={styles.input}
-          placeholder="Full Name"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Full Name"
+            value={name}
+            onChangeText={setName}
+            autoCapitalize="words"
+          />
         
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
         
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
         
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignup}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Creating Account...' : 'Sign Up'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignup}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.switchButton}
-          onPress={onSwitchToLogin}
-        >
-          <Text style={styles.switchText}>
-            Already have an account? Log in
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity 
+            style={styles.switchButton}
+            onPress={onSwitchToLogin}
+          >
+            <Text style={styles.switchText}>
+              Already have an account? Log in
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -14,6 +14,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { getContacts, createDispute } from '../services/api';
 import { theme } from '../styles/theme';
+import { Toast } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function CreateDisputeScreen({ token, onBack, onDisputeCreated }) {
   const [title, setTitle] = useState('');
@@ -21,6 +23,7 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(true);
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   useEffect(() => {
     loadContacts();
@@ -31,7 +34,7 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
       const data = await getContacts(token);
       setContacts(data.contacts || []);
     } catch (error) {
-      Alert.alert('Error', 'Failed to load contacts');
+      showError('Failed to load contacts');
       console.error('Error loading contacts:', error);
     } finally {
       setLoadingContacts(false);
@@ -51,12 +54,12 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
 
   const handleCreateDispute = async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a dispute title');
+      showError('Please enter a dispute title');
       return;
     }
 
     if (selectedContacts.length === 0) {
-      Alert.alert('Error', 'Please select at least one participant');
+      showError('Please select at least one participant');
       return;
     }
 
@@ -69,13 +72,11 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
         participant_emails
       }, token);
 
-      Alert.alert(
-        'Success', 
-        'Dispute created successfully!',
-        [{ text: 'OK', onPress: onDisputeCreated }]
-      );
+      showSuccess('Dispute created successfully!');
+      onDisputeCreated()
+
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to create dispute');
+      showError(error.message || 'Failed to create dispute');
     } finally {
       setLoading(false);
     }
@@ -102,6 +103,14 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
 
   return (
     <SafeAreaView style={styles.container}>
+
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      
       <KeyboardAvoidingView 
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
