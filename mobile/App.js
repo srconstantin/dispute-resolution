@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
 
 AppRegistry.registerComponent('main', () => App);
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   console.log('Mounting FairEnough app for web...');
   AppRegistry.runApplication('main', {
     rootTag: document.getElementById('root'),

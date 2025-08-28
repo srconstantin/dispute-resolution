@@ -13,6 +13,7 @@ import { getContacts, getDisputes } from '../services/api';
 import { theme } from '../styles/theme';
 
 
+
 export default function HomeScreen({ user, token, onLogout, onNavigateToContacts, onNavigateToDisputes }) {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [invitedDisputesCount, setInvitedDisputesCount] = useState(0);

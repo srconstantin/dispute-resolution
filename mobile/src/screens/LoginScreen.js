@@ -11,92 +11,98 @@ import {
 } from 'react-native';
 import { loginUser } from '../services/api';
 import { theme } from '../styles/theme';
-import { showAlert, showError } from '../utils/alert';
+import { Toast } from '../components/Toast';
+import { useToast } from '../hooks/useToast';
 
 export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
+  const { toast, showSuccess, showError, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-  alert('🚨 NEW CODE IS LOADED! 🚨');
-  return; // Don't do anything else, just test this
-};
+    console.log('🟢 BUTTON WAS PRESSED!');
+    if (!email || !password) {
+      console.log('🟡 Missing fields');
+      showError('Please fill in all fields');
+      return;
+    }
 
-  //const handleLogin = async () => {
-    //console.log('🟢 BUTTON WAS PRESSED!');
-    //if (!email || !password) {
-      //console.log('🟡 Missing fields');
-      //showError('Please fill in all fields');
-      //return;
-    //}
+    console.log('🟢 About to start login process');
 
-    //console.log('🟢 About to start login process');
-
-    //setLoading(true);
-    //try {
-      //console.log('=== ATTEMPTING LOGIN ===');
-      //console.log('Email:', email);
-      //console.log('Password length:', password.length);
-      //const result = await loginUser({ email, password });
-      //console.log('Login successful:', result);
+    setLoading(true);
+    try {
+      console.log('=== ATTEMPTING LOGIN ===');
+      console.log('Email:', email);
+      console.log('Password length:', password.length);
+      const result = await loginUser({ email, password });
+      console.log('Login successful:', result);
       
-     // onLoginSuccess(result.user, result.token);
+      onLoginSuccess(result.user, result.token);
       
-     // setEmail('');
-     // setPassword('');
-    //} catch (error) {
-      //console.log('Login error:', error);
-      //showError(error.message || 'Failed to login');
-    //} finally {
-      //setLoading(false);
-    //}
-  //};
+      setEmail('');
+      setPassword('');
+    } catch (error) {
+      console.log('Login error:', error);
+      showError( error.message || 'Failed to login');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <KeyboardAvoidingView 
+    <View style={styles.container}>
+      <Toast 
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onHide={hideToast}
+      />
+      
+      <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome Back</Text>
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Welcome Back</Text>
         
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+          />
         
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
         
-        <TouchableOpacity 
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>
-            {loading ? 'Logging in...' : 'Log In'}
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Logging in...' : 'Log In'}
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={styles.switchButton}
-          onPress={onSwitchToSignup}
-        >
-          <Text style={styles.switchText}>
-            Don't have an account? Sign up
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity 
+            style={styles.switchButton}
+            onPress={onSwitchToSignup}
+          >
+            <Text style={styles.switchText}>
+              Don't have an account? Sign up
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
