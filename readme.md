@@ -52,17 +52,15 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --uses participant text in a call to the Claude API to get a verdict on who's in the right/wrong and what should be done to resolve the dispute; saves the verdict to the database; and shows the users the verdict
 
-
+--shows error and success messages to users
 
 ## TODO
-
---display success/failure to user after taking actions
 
 --fix fonts on signup screen
 
 --allow password reset?
 
-
+--test different prompts & user inputs to see how reasonable the results are
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
