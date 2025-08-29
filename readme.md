@@ -56,7 +56,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---fix fonts on signup screen
 
 --allow password reset?
 
