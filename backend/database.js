@@ -402,7 +402,7 @@ const createContactRequest = async (requesterEmail, recipientEmail, callback) =>
     console.log('📞 Creating encrypted contact request');
     // Get the requester using email hash
     const requesterEmailHash = encryption.hashForSearch(requesterEmail);
-    const requesterResult = await pool.query('SELECT * FROM users WHERE email_hash = $1', [requesterEmail]);
+    const requesterResult = await pool.query('SELECT * FROM users WHERE email_hash = $1', [requesterEmailHash]);
     const requester = requesterResult.rows[0];
     
     if (!requester) {
