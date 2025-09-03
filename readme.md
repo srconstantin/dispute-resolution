@@ -57,9 +57,13 @@ Go to https://fairenough.netlify.app/ to use the app
 ## TODO
 
 
---allow password reset?
+--stop logging out users upon refresh
 
---test different prompts & user inputs to see how reasonable the results are
+--allow deleting contacts
+
+--require contact requests/contacts to be unique
+
+--(maybe) show all participants' accounts of a dispute to all participants.
 
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
