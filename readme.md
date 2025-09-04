@@ -57,7 +57,7 @@ Go to https://fairenough.netlify.app/ to use the app
 ## TODO
 
 
---stop logging out users upon refresh
+--stop navigating to the home page after each refresh
 
 --allow deleting contacts
 
