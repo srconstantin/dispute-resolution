@@ -1,7 +1,7 @@
 import 'react-native-url-polyfill/auto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, ActivityIndicator, View, Text, Platform, AppRegistry } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { 
   Merriweather_400Regular,
@@ -25,7 +25,46 @@ const STORAGE_KEYS = {
   TOKEN: '@auth_token'
 };
 
+// Cross-platform storage utility
+const Storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        return localStorage.getItem(key);
+        console.log(`Storage.getItem(${key}):`, value ? 'Found' : 'Not found');
+        return value;
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+        return null;
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      return AsyncStorage.getItem(key);
+    }
+  },
 
+  async setItem(key, value) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.setItem(key, value);
+        console.log(`Storage.setItem(${key}): Stored successfully`);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    }
+  },
+
+  async removeItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem(key);
+        console.log(`Storage.removeItem(${key}): Removed successfully`);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    }
+  }
+};
 
  function App() {
   const [currentScreen, setCurrentScreen] = useState('login'); // 'signup', 'login', 'home', 'contacts'
@@ -33,6 +72,7 @@ const STORAGE_KEYS = {
   const [token, setToken] = useState(null);
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+
   const [fontsLoaded] = useFonts({
     Merriweather_400Regular,
     Merriweather_700Bold,
@@ -41,21 +81,22 @@ const STORAGE_KEYS = {
     Lato_700Bold,
   });
 
-  // Don't render app until fonts are loaded
-  if (!fontsLoaded) {
-    return null; // Or show a loading screen
-  }
 
   // Check for stored authentication on app startup
   useEffect(() => {
-    checkStoredAuth();
-  }, []);
+    if (fontsLoaded){
+      checkStoredAuth();
+    }
+  }, [fontsLoaded]);
+
+ 
+
 
   const checkStoredAuth = async () => {
     try {
       const [storedUser, storedToken] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.USER),
-        AsyncStorage.getItem(STORAGE_KEYS.TOKEN)
+        Storage.getItem(STORAGE_KEYS.USER),
+        Storage.getItem(STORAGE_KEYS.TOKEN)
       ]);
 
       if (storedUser && storedToken) {
@@ -79,8 +120,8 @@ const STORAGE_KEYS = {
   const storeAuth = async (userData, userToken) => {
     try {
       await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData)),
-        AsyncStorage.setItem(STORAGE_KEYS.TOKEN, userToken)
+        Storage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData)),
+        Storage.setItem(STORAGE_KEYS.TOKEN, userToken)
       ]);
     } catch (error) {
       console.error('Error storing auth:', error);
@@ -90,8 +131,8 @@ const STORAGE_KEYS = {
   const clearStoredAuth = async () => {
     try {
       await Promise.all([
-        AsyncStorage.removeItem(STORAGE_KEYS.USER),
-        AsyncStorage.removeItem(STORAGE_KEYS.TOKEN)
+        Storage.removeItem(STORAGE_KEYS.USER),
+        Storage.removeItem(STORAGE_KEYS.TOKEN)
       ]);
     } catch (error) {
       console.error('Error clearing stored auth:', error);
@@ -167,7 +208,7 @@ const STORAGE_KEYS = {
     console.log('Dispute updated');
   };
  // Show loading screen while checking authentication
-  if (isLoading) {
+  if (!fontsLoaded || isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>

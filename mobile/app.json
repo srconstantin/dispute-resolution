@@ -35,7 +35,7 @@
     "web": {
       "favicon": "./assets/bluespiral.png",
       "bundler": "metro"
+      }
     }
-  }
   }
 }
