@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
-import React, { useState } from 'react';
-import { StyleSheet, SafeAreaView, View, Text, Platform, AppRegistry } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, SafeAreaView, ActivityIndicator, View, Text, Platform, AppRegistry } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts } from 'expo-font';
 import { 
   Merriweather_400Regular,
@@ -19,12 +20,19 @@ import DisputesScreen from './src/screens/DisputesScreen';
 import CreateDisputeScreen from './src/screens/CreateDisputeScreen';
 import DisputeDetailScreen from './src/screens/DisputeDetailScreen';
 
+const STORAGE_KEYS = {
+  USER: '@user_data',
+  TOKEN: '@auth_token'
+};
 
-function App() {
+
+
+ function App() {
   const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home', 'contacts'
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [fontsLoaded] = useFonts({
     Merriweather_400Regular,
     Merriweather_700Bold,
@@ -38,25 +46,82 @@ function App() {
     return null; // Or show a loading screen
   }
 
+  // Check for stored authentication on app startup
+  useEffect(() => {
+    checkStoredAuth();
+  }, []);
 
-  const handleSignupSuccess = (userData, userToken) => {
+  const checkStoredAuth = async () => {
+    try {
+      const [storedUser, storedToken] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.USER),
+        AsyncStorage.getItem(STORAGE_KEYS.TOKEN)
+      ]);
+
+      if (storedUser && storedToken) {
+        const userData = JSON.parse(storedUser);
+        
+        // Optionally verify token is still valid by making a test API call
+        // For now, we'll trust it's valid until it fails
+        setUser(userData);
+        setToken(storedToken);
+        setCurrentScreen('home');
+      }
+    } catch (error) {
+      console.error('Error checking stored auth:', error);
+      // If there's an error, clear any corrupted data
+      await clearStoredAuth();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const storeAuth = async (userData, userToken) => {
+    try {
+      await Promise.all([
+        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData)),
+        AsyncStorage.setItem(STORAGE_KEYS.TOKEN, userToken)
+      ]);
+    } catch (error) {
+      console.error('Error storing auth:', error);
+    }
+  };
+
+  const clearStoredAuth = async () => {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(STORAGE_KEYS.USER),
+        AsyncStorage.removeItem(STORAGE_KEYS.TOKEN)
+      ]);
+    } catch (error) {
+      console.error('Error clearing stored auth:', error);
+    }
+  };
+
+  const handleSignupSuccess = async (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
     setSelectedDisputeId(null);
     setCurrentScreen('home');
+    //persist authentication data
+    await storeAuth(userData, userToken);
   };
 
-  const handleLoginSuccess = (userData, userToken) => {
+  const handleLoginSuccess = async (userData, userToken) => {
     setUser(userData);
     setToken(userToken);
     setCurrentScreen('home');
+    //persist authentication data
+    await storeAuth(userData, userToken);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setUser(null);
     setToken(null);
     setSelectedDisputeId(null);
     setCurrentScreen('login');
+    //clear authentication data
+    await clearStoredAuth();
   };
 
   const switchToLogin = () => {
@@ -101,7 +166,16 @@ function App() {
     // Could trigger a refresh of disputes list here if needed
     console.log('Dispute updated');
   };
-
+ // Show loading screen while checking authentication
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
