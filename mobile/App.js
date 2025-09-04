@@ -28,7 +28,7 @@ const STORAGE_KEYS = {
 
 
  function App() {
-  const [currentScreen, setCurrentScreen] = useState('signup'); // 'signup', 'login', 'home', 'contacts'
+  const [currentScreen, setCurrentScreen] = useState('login'); // 'signup', 'login', 'home', 'contacts'
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [selectedDisputeId, setSelectedDisputeId] = useState(null);
