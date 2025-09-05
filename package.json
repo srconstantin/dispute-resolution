@@ -2,6 +2,12 @@
   "dependencies": {
     "@expo-google-fonts/lato": "^0.4.0",
     "@expo-google-fonts/merriweather": "^0.4.1",
-    "@react-native-async-storage/async-storage": "^2.2.0"
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-navigation/native": "^7.1.17",
+    "@react-navigation/native-stack": "^7.3.26",
+    "expo": "^53.0.22",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-router-dom": "^7.8.2"
   }
 }

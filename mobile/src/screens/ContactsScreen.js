@@ -16,7 +16,7 @@ import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
-export default function ContactsScreen({ token, onBack }) {
+export default function ContactsScreen({ navigation, token }) {
   const [contacts, setContacts] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [newContactEmail, setNewContactEmail] = useState('');
@@ -28,6 +28,15 @@ export default function ContactsScreen({ token, onBack }) {
   useEffect(() => {
     loadContacts();
   }, []);
+
+    // Focus listener to refresh data when returning to this screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadContacts();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadContacts = async () => {
     try {
@@ -125,7 +134,10 @@ export default function ContactsScreen({ token, onBack }) {
         onHide={hideToast}
       />
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+        >
           <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>

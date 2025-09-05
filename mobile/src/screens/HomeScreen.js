@@ -14,7 +14,7 @@ import { theme } from '../styles/theme';
 
 
 
-export default function HomeScreen({ user, token, onLogout, onNavigateToContacts, onNavigateToDisputes }) {
+export default function HomeScreen({ navigation, user, token, onLogout }) {
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
   const [invitedDisputesCount, setInvitedDisputesCount] = useState(0);
   const [stats, setStats] = useState({
@@ -52,6 +52,11 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
 
   const getInitials = (name) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+  };
+
+  const handleLogout = async () => {
+    await onLogout();
+    // Navigation will automatically show login screen due to conditional rendering in App.js
   };
 
   return (
@@ -106,7 +111,10 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToDisputes}>
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => navigation.navigate('Disputes')}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
               </View>
@@ -114,7 +122,10 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
               <Text style={styles.actionSubtitle}>Start a new dispute resolution</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToDisputes}>
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => navigation.navigate('Disputes')}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="document-text-outline" size={24} color="#FFFFFF" />
               </View>
@@ -126,8 +137,11 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
                 </View>
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionCard} onPress={onNavigateToContacts}>
+
+            <TouchableOpacity 
+              style={styles.actionCard} 
+              onPress={() => navigation.navigate('Contacts')}
+            >
               <View style={styles.actionIcon}>
                 <Ionicons name="people-outline" size={24} color="#FFFFFF" />
               </View>
@@ -140,7 +154,8 @@ export default function HomeScreen({ user, token, onLogout, onNavigateToContacts
               )}
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionCard} onPress={onLogout}>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={handleLogout}>
               <View style={styles.actionIcon}>
                 <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
               </View>

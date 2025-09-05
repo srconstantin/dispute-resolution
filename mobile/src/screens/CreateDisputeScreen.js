@@ -17,7 +17,7 @@ import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
-export default function CreateDisputeScreen({ token, onBack, onDisputeCreated }) {
+export default function CreateDisputeScreen({navigation, token }) {
   const [title, setTitle] = useState('');
   const [contacts, setContacts] = useState([]);
   const [selectedContacts, setSelectedContacts] = useState([]);
@@ -73,7 +73,10 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
       }, token);
 
       showSuccess('Dispute created successfully!');
-      onDisputeCreated()
+
+      // Navigate back to disputes screen
+      navigation.goBack();
+
 
     } catch (error) {
       showError(error.message || 'Failed to create dispute');
@@ -116,7 +119,10 @@ export default function CreateDisputeScreen({ token, onBack, onDisputeCreated })
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
             <Text style={styles.backButtonText}>Cancel</Text>
           </TouchableOpacity>

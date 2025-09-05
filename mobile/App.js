@@ -1,7 +1,8 @@
 import 'react-native-url-polyfill/auto';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, SafeAreaView, ActivityIndicator, View, Text, Platform, AppRegistry } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useFonts } from 'expo-font';
 import { 
   Merriweather_400Regular,
@@ -20,6 +21,8 @@ import DisputesScreen from './src/screens/DisputesScreen';
 import CreateDisputeScreen from './src/screens/CreateDisputeScreen';
 import DisputeDetailScreen from './src/screens/DisputeDetailScreen';
 
+const Stack = createNativeStackNavigator();
+
 const STORAGE_KEYS = {
   USER: '@user_data',
   TOKEN: '@auth_token'
@@ -30,7 +33,7 @@ const Storage = {
   async getItem(key) {
     if (Platform.OS === 'web') {
       try {
-        return localStorage.getItem(key);
+        const value = localStorage.getItem(key);
         console.log(`Storage.getItem(${key}):`, value ? 'Found' : 'Not found');
         return value;
       } catch (e) {
@@ -51,6 +54,8 @@ const Storage = {
       } catch (e) {
         console.warn('localStorage not available:', e);
       }
+    } else {
+      AsyncStorage.setItem(key, value);
     }
   },
 
@@ -62,16 +67,34 @@ const Storage = {
       } catch (e) {
         console.warn('localStorage not available:', e);
       }
+    } else {
+      AsyncStorage.removeItem(key);
     }
   }
 };
 
+// Linking configuration for URL handling
+const linking = {
+  prefixes: ['http://localhost:19006', 'https://fairenough.netlify.app'],
+  config: {
+    screens: {
+      Home: '/',
+      Contacts: '/contacts',
+      Disputes: '/disputes',
+      CreateDispute: '/disputes/create',
+      DisputeDetail: '/disputes/:disputeId',
+      Login: '/login',
+      Signup: '/signup',
+    },
+  },
+};
+
  function App() {
-  const [currentScreen, setCurrentScreen] = useState('login'); // 'signup', 'login', 'home', 'contacts'
+
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [selectedDisputeId, setSelectedDisputeId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Merriweather_400Regular,
@@ -106,7 +129,6 @@ const Storage = {
         // For now, we'll trust it's valid until it fails
         setUser(userData);
         setToken(storedToken);
-        setCurrentScreen('home');
       }
     } catch (error) {
       console.error('Error checking stored auth:', error);
@@ -114,6 +136,7 @@ const Storage = {
       await clearStoredAuth();
     } finally {
       setIsLoading(false);
+      setIsReady(true);
     }
   };
 
@@ -123,167 +146,114 @@ const Storage = {
         Storage.setItem(STORAGE_KEYS.USER, JSON.stringify(userData)),
         Storage.setItem(STORAGE_KEYS.TOKEN, userToken)
       ]);
+      console.log('Auth stored successfully');
+      setUser(userData);
+      setToken(userToken);
     } catch (error) {
       console.error('Error storing auth:', error);
     }
   };
 
   const clearStoredAuth = async () => {
+    console.log('Clearing stored auth...');
     try {
       await Promise.all([
         Storage.removeItem(STORAGE_KEYS.USER),
         Storage.removeItem(STORAGE_KEYS.TOKEN)
       ]);
+      console.log('Auth cleared successfully');
+      setUser(null);
+      setToken(null);
     } catch (error) {
       console.error('Error clearing stored auth:', error);
     }
   };
 
-  const handleSignupSuccess = async (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    setSelectedDisputeId(null);
-    setCurrentScreen('home');
-    //persist authentication data
-    await storeAuth(userData, userToken);
-  };
 
-  const handleLoginSuccess = async (userData, userToken) => {
-    setUser(userData);
-    setToken(userToken);
-    setCurrentScreen('home');
-    //persist authentication data
-    await storeAuth(userData, userToken);
-  };
-
-  const handleLogout = async () => {
-    setUser(null);
-    setToken(null);
-    setSelectedDisputeId(null);
-    setCurrentScreen('login');
-    //clear authentication data
-    await clearStoredAuth();
-  };
-
-  const switchToLogin = () => {
-    setCurrentScreen('login');
-  };
-
-  const switchToSignup = () => {
-    setCurrentScreen('signup');
-  };
-
-  const handleNavigateToContacts = () => {
-    setCurrentScreen('contacts');
-  };
-
-  const handleNavigateToDisputes = () => {
-    setCurrentScreen('disputes');
-  };
-
-  const handleBackToHome = () => {
-    setCurrentScreen('home');
-  };
-
-  const handleCreateDispute = () => {
-    setCurrentScreen('createDispute');
-  };
-
-
-  const handleViewDispute = (disputeId) => {
-    setSelectedDisputeId(disputeId);
-    setCurrentScreen('disputeDetail');
-  };
-
-  const handleBackToDisputes = () => {
-    setCurrentScreen('disputes');
-  };
-
-  const handleDisputeCreated = () => {
-    setCurrentScreen('disputes');
-  };
-
-  const handleDisputeUpdated = () => {
-    // Could trigger a refresh of disputes list here if needed
-    console.log('Dispute updated');
-  };
- // Show loading screen while checking authentication
-  if (!fontsLoaded || isLoading) {
+  if (!fontsLoaded || isLoading || !isReady) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>
+          {!fontsLoaded ? 'Loading fonts...' : 'Loading...'}
+        </Text>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {currentScreen === 'signup' && (
-        <SignupScreen 
-          onSignupSuccess={handleSignupSuccess}
-          onSwitchToLogin={switchToLogin}
-        />
-      )}
-      {currentScreen === 'login' && (
-        <LoginScreen 
-          onLoginSuccess={handleLoginSuccess}
-          onSwitchToSignup={switchToSignup}
-        />
-      )}
-      
-      {currentScreen === 'home' && (
-        <HomeScreen 
-          user={user}
-          token={token}
-          onLogout={handleLogout}
-          onNavigateToContacts={handleNavigateToContacts}
-          onNavigateToDisputes={handleNavigateToDisputes}
-        />
-      )}
-      {currentScreen === 'contacts' && (
-        <ContactsScreen 
-          token={token}
-          onBack={handleBackToHome}
-        />
-      )}
-
-      
-      {currentScreen === 'disputes' && (
-        <DisputesScreen 
-          token={token}
-          onBack={handleBackToHome}
-          onCreateDispute={handleCreateDispute}
-          onViewDispute={handleViewDispute}
-        />
-      )}
-
-      {currentScreen === 'createDispute' && (
-        <CreateDisputeScreen 
-          token={token}
-          onBack={handleBackToDisputes}
-          onDisputeCreated={handleDisputeCreated}
-        />
-      )}
-
-      {currentScreen === 'disputeDetail' && selectedDisputeId && (
-        <DisputeDetailScreen 
-          disputeId={selectedDisputeId}
-          token={token}
-          currentUserId={user?.id}
-          onBack={handleBackToDisputes}
-          onDisputeUpdated={handleDisputeUpdated}
-        />
-      )}
-    </SafeAreaView>
+    <NavigationContainer linking={linking}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {user ? (
+          // Authenticated screens
+          <>
+            <Stack.Screen name="Home">
+              {(props) => (
+                <HomeScreen 
+                  {...props}
+                  user={user}
+                  token={token}
+                  onLogout={clearStoredAuth}
+                />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Contacts">
+              {(props) => (
+                <ContactsScreen {...props} token={token} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Disputes">
+              {(props) => (
+                <DisputesScreen {...props} token={token} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="CreateDispute">
+              {(props) => (
+                <CreateDisputeScreen {...props} token={token} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="DisputeDetail">
+              {(props) => (
+                <DisputeDetailScreen 
+                  {...props} 
+                  token={token}
+                  currentUserId={user?.id}
+                />
+              )}
+            </Stack.Screen>
+          </>
+        ) : (
+          // Unauthenticated screens
+          <>
+            <Stack.Screen name="Login">
+              {(props) => (
+                <LoginScreen {...props} onLoginSuccess={storeAuth} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="Signup">
+              {(props) => (
+                <SignupScreen {...props} onSignupSuccess={storeAuth} />
+              )}
+            </Stack.Screen>
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
+
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#F5F2ED',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#333',
   },
 });
 

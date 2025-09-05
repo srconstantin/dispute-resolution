@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getDisputes } from '../services/api';
 import { theme } from '../styles/theme';
 
-export default function DisputesScreen({ token, onBack, onCreateDispute, onViewDispute }) {
+export default function DisputesScreen({ navigation, token}) {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -21,6 +21,15 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
   useEffect(() => {
     loadDisputes();
   }, []);
+
+
+  // Focus listener to refresh data when returning to this screen
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadDisputes();
+    });
+  return unsubscribe;
+}, [navigation]);
 
   const loadDisputes = async () => {
     try {
@@ -70,6 +79,14 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
     });
   };
 
+  const handleViewDispute = (disputeId) => {
+    navigation.navigate('DisputeDetail', { disputeId });
+  };
+
+  const handleCreateDispute = () => {
+    navigation.navigate('CreateDispute');
+  };  
+
   const renderDispute = ({ item }) => {
     const statusStyle = getDisputeStatusStyle(item.status, item.user_participation_status);
     const statusText = getDisputeStatusText(item.status, item.user_participation_status);
@@ -77,7 +94,7 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
     return (
       <TouchableOpacity 
         style={[styles.disputeItem, statusStyle]}
-        onPress={() => onViewDispute(item.id)}
+        onPress={() => handleViewDispute(item.id)}
       >
         <View style={styles.disputeHeader}>
           <Text style={styles.disputeTitle} numberOfLines={2}>
@@ -103,7 +120,10 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity 
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
           <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
@@ -113,7 +133,7 @@ export default function DisputesScreen({ token, onBack, onCreateDispute, onViewD
       <View style={styles.content}>
         <TouchableOpacity 
           style={styles.createButton}
-          onPress={onCreateDispute}
+          onPress={handleCreateDispute}
         >
           <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" style={{marginRight: 8}} />
           <Text style={styles.createButtonText}>Create New Dispute</Text>

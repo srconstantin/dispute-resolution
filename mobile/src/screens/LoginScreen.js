@@ -14,7 +14,7 @@ import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
-export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
+export default function LoginScreen({ navigation, onLoginSuccess }) {
   const { toast, showSuccess, showError, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -94,7 +94,7 @@ export default function LoginScreen({ onLoginSuccess, onSwitchToSignup }) {
 
           <TouchableOpacity 
             style={styles.switchButton}
-            onPress={onSwitchToSignup}
+            onPress={() => navigation.navigate('Signup')}
           >
             <Text style={styles.switchText}>
               Don't have an account? Sign up

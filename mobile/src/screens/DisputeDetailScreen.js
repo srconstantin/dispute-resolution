@@ -18,7 +18,8 @@ import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
-export default function DisputeDetailScreen({ disputeId, token, currentUserId, onBack, onDisputeUpdated }) {
+export default function DisputeDetailScreen({ route, navigation, token, currentUserId }) {
+  const { disputeId } = route.params
   const [dispute, setDispute] = useState(null);
   const [responseText, setResponseText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,6 +29,14 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
   useEffect(() => {
     loadDisputeDetails();
   }, []);
+
+ useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadDisputeDetails();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   const loadDisputeDetails = async () => {
     try {
@@ -52,7 +61,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       await joinDispute(disputeId, token);
       showSuccess('You have joined the dispute!')
       loadDisputeDetails();
-      onDisputeUpdated?.();
+
     } catch (error) {
       showError(error.message || 'Failed to join dispute');
     } finally {
@@ -75,7 +84,7 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
               await rejectDispute(disputeId, token);
               showSuccess('You have rejected the dispute!');
               loadDisputeDetails();
-              onDisputeUpdated?.();
+
             } catch (error) {
               showError(error.message || 'Failed to reject dispute');
             } finally {
@@ -104,7 +113,6 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
       }
       
       loadDisputeDetails();
-      onDisputeUpdated?.();
     } catch (error) {
       showError(error.message || 'Failed to submit response');
     } finally {
@@ -139,7 +147,10 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
@@ -156,7 +167,10 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
@@ -187,7 +201,10 @@ export default function DisputeDetailScreen({ disputeId, token, currentUserId, o
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
             <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
