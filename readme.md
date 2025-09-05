@@ -63,6 +63,8 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --require contact requests/contacts to be unique
 
+--allow creators to delete disputes and participants to leave disputes
+
 --show a FairEnough title/logo in browser tabs
 
 --(maybe) show all participants' accounts of a dispute to all participants.
