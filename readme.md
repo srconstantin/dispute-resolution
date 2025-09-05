@@ -54,14 +54,16 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --shows error and success messages to users
 
+--saves login and current page state (so reloads don't logout or redirect the user)
+
 ## TODO
 
-
---stop navigating to the home page after each refresh
 
 --allow deleting contacts
 
 --require contact requests/contacts to be unique
+
+--show a FairEnough title/logo in browser tabs
 
 --(maybe) show all participants' accounts of a dispute to all participants.
 
