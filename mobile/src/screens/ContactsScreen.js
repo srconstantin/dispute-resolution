@@ -54,6 +54,35 @@ export default function ContactsScreen({ navigation, token }) {
       return;
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newContactEmail.trim())) {
+      showError('Please enter a valid email address');
+      return;
+    }
+
+    // Check if contact already exists
+    const normalizedEmail = newContactEmail.trim().toLowerCase();
+    const existingContact = contacts.find(
+      contact => contact.contact_email.toLowerCase() === normalizedEmail
+    );
+
+    if (existingContact) {
+      showError('This contact already exists in your contact list');
+      return;
+    }
+
+    // Check if there's already a pending request for this email
+    const pendingRequest = pendingRequests.find(
+      request => request.requester_email.toLowerCase() === normalizedEmail
+    );
+
+    if (pendingRequest) {
+      showError('You already have a pending contact request for this email');
+      return;
+    }
+
+
     setLoading(true);
     try {
       const result = await sendContactRequest(newContactEmail.trim(), token);
@@ -86,6 +115,33 @@ export default function ContactsScreen({ navigation, token }) {
       showError(error.message || 'Failed to reject contact request');
     }
   };
+
+  const handleRemoveContact = (contactItem) => {
+    Alert.alert(
+      'Remove Contact',
+      `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeContact(contactItem.id, token);
+              showSuccess('Contact removed successfully');
+              loadContacts();
+            } catch (error) {
+              showError(error.message || 'Failed to remove contact');
+            }
+          }
+        }
+      ]
+    );
+  };
+
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -316,6 +372,14 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
+  removeButton: {
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.small,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+  },
+  
   buttonContainer: {
     flexDirection: 'row',
     gap: theme.spacing.sm,

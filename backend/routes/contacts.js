@@ -47,6 +47,23 @@ router.post('/request', authenticateToken, async (req, res) => {
   }
 
 try {
+    // Check if contact already exists or has a pending request
+    const existingContact = await new Promise((resolve, reject) => {
+      checkExistingContact(req.user.email, email, (err, result) => {
+        if (err) reject(err);
+        else resolve(result);
+      });
+    });
+
+
+    if (existingContact.exists) {
+      return res.status(400).json({ 
+        error: existingContact.isPending 
+          ? 'A contact request is already pending for this email' 
+          : 'This contact already exists in your contact list'
+      });
+    }
+
     // Get the current user's info to include their name in the email
     const currentUser = await new Promise((resolve, reject) => {
       getUserByEmail(req.user.email, (err, user) => {
@@ -62,6 +79,9 @@ try {
     // Create the contact request
     createContactRequest(req.user.email, email, async (err, result) => {
       if (err) {
+        if (err.message.includes('duplicate') || err.message.includes('already')) {
+          return res.status(400).json({ error: 'A contact request for this email already exists' });
+        }
         return res.status(500).json({ error: 'Failed to send contact request' });
       }
 
@@ -136,6 +156,24 @@ router.put('/:id/reject', authenticateToken, (req, res) => {
     }
     
     res.json({ message: 'Contact request rejected', result });
+  });
+});
+
+// Delete/remove contact
+router.delete('/:id', authenticateToken, (req, res) => {
+  const contactId = req.params.id;
+  const userEmail = req.user.email;
+  
+  deleteContact(contactId, userEmail, (err, result) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to remove contact' });
+    }
+    
+    if (!result.deleted) {
+      return res.status(404).json({ error: 'Contact not found or you do not have permission to delete it' });
+    }
+    
+    res.json({ message: 'Contact removed successfully', result });
   });
 });
 

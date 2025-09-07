@@ -133,6 +133,27 @@ export const rejectContactRequest = async (requestId, token) => {
   }
 };
 
+export const removeContact = async (contactId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/contacts/${contactId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to remove contact');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
 
 export const getDisputes = async (token) => {
   try {

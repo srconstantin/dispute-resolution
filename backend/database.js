@@ -519,6 +519,82 @@ const updateContactRequest = async (requestId, status, callback) => {
   }
 };
 
+const deleteContact = async (contactId, userEmail, callback) => {
+  try {
+    const userEmailHash = encryption.hashForSearch(userEmail);
+    const userResult = await pool.query('SELECT * FROM users WHERE email_hash = $1', [userEmailHash]);
+    const user = userResult.rows[0];
+    
+    if (!user) {
+      return callback(new Error('User not found'), null);
+    }
+
+    // Delete the contact where the user is either the requester or recipient
+    // and the contact status is 'accepted'
+    const result = await pool.query(`
+      DELETE FROM contacts 
+      WHERE id = $1 
+        AND (requester_id = $2 OR recipient_id = $2) 
+        AND status = 'accepted'
+    `, [contactId, user.id]);
+    
+    callback(null, { 
+      contactId, 
+      deleted: result.rowCount > 0 
+    });
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
+const checkExistingContact = async (userEmail, contactEmail, callback) => {
+  try {
+    const userEmailHash = encryption.hashForSearch(userEmail);
+    const contactEmailHash = encryption.hashForSearch(contactEmail);
+    
+    const userResult = await pool.query('SELECT * FROM users WHERE email_hash = $1', [userEmailHash]);
+    const user = userResult.rows[0];
+    
+    if (!user) {
+      return callback(new Error('User not found'), null);
+    }
+
+    // Check for existing accepted contact
+    const existingContactResult = await pool.query(`
+      SELECT c.id, c.status 
+      FROM contacts c
+      LEFT JOIN users u1 ON c.requester_id = u1.id
+      LEFT JOIN users u2 ON c.recipient_id = u2.id
+      WHERE ((c.requester_id = $1 AND c.recipient_email_hash = $2) 
+        OR (c.recipient_id = $1 AND u1.email_hash = $2))
+        AND c.status = 'accepted'
+    `, [user.id, contactEmailHash]);
+
+    if (existingContactResult.rows.length > 0) {
+      return callback(null, { exists: true, isPending: false });
+    }
+
+    // Check for pending contact request
+    const pendingRequestResult = await pool.query(`
+      SELECT c.id, c.status 
+      FROM contacts c
+      LEFT JOIN users u1 ON c.requester_id = u1.id
+      WHERE ((c.requester_id = $1 AND c.recipient_email_hash = $2) 
+        OR (c.recipient_id = $1 AND u1.email_hash = $2))
+        AND c.status = 'pending'
+    `, [user.id, contactEmailHash]);
+
+    if (pendingRequestResult.rows.length > 0) {
+      return callback(null, { exists: true, isPending: true });
+    }
+
+    callback(null, { exists: false, isPending: false });
+  } catch (err) {
+    callback(err, null);
+  }
+};
+
+
 const { generateVerdict } = require('./services/claude');
 
 
