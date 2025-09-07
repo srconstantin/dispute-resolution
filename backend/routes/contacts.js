@@ -164,15 +164,19 @@ router.delete('/:id', authenticateToken, (req, res) => {
   const contactId = req.params.id;
   const userEmail = req.user.email;
   
+  console.log('🗑️ DELETE route hit!');
+  console.log('🗑️ Contact ID:', contactId);
+  console.log('🗑️ User email:', userEmail);  
   deleteContact(contactId, userEmail, (err, result) => {
     if (err) {
+      console.error('❌ Error in deleteContact:', err);
       return res.status(500).json({ error: 'Failed to remove contact' });
     }
-    
+    console.log('✅ deleteContact result:', result);
     if (!result.deleted) {
       return res.status(404).json({ error: 'Contact not found or you do not have permission to delete it' });
     }
-    
+    console.log('✅ Contact deleted successfully');    
     res.json({ message: 'Contact removed successfully', result });
   });
 });

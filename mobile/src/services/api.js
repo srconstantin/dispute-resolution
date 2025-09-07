@@ -134,14 +134,21 @@ export const rejectContactRequest = async (requestId, token) => {
 };
 
 export const removeContact = async (contactId, token) => {
+  const url = `${API_URL}/contacts/${contactId}`;
+  console.log('🔍 DELETE URL:', url);
+  console.log('🔍 Contact ID:', contactId);
+  console.log('🔍 Token exists:', !!token);
   try {
-    const response = await fetch(`${API_URL}/contacts/${contactId}`, {
+    const response = await fetch(url, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
     });
+
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response OK:', response.ok);    
 
     const data = await response.json();
 
@@ -151,6 +158,7 @@ export const removeContact = async (contactId, token) => {
 
     return data;
   } catch (error) {
+    console.error('❌ removeContact error:', error); 
     throw error;
   }
 };
