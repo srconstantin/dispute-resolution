@@ -11,7 +11,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getContacts, sendContactRequest, approveContactRequest, rejectContactRequest } from '../services/api';
+import { getContacts, sendContactRequest, approveContactRequest, rejectContactRequest, removeContact } from '../services/api';
 import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
@@ -351,6 +351,7 @@ const styles = StyleSheet.create({
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',  // ADD THIS LINE
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,

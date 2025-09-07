@@ -1,6 +1,6 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { getUserContacts, createContactRequest, updateContactRequest, getUserByEmail } = require('../database');
+const { getUserContacts, createContactRequest, updateContactRequest, getUserByEmail, deleteContact, checkExistingContact } = require('../database');
 const { sendInvitationEmail } = require('../services/emailService');
 
 const router = express.Router();

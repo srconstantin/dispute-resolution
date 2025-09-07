@@ -683,6 +683,8 @@ module.exports = {
   createContactRequest,
   getUserContacts,
   updateContactRequest,
+  deleteContact,
+  checkExistingContact,
   createDispute,
   getDisputesByUser,
   getDisputeById,
