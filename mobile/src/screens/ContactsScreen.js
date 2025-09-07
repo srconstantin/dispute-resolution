@@ -155,6 +155,12 @@ export default function ContactsScreen({ navigation, token }) {
         <Text style={styles.contactName}>{item.contact_name}</Text>
         <Text style={styles.contactEmail}>{item.contact_email}</Text>
       </View>
+      <TouchableOpacity 
+        style={styles.removeButton}
+        onPress={() => handleRemoveContact(item)}
+      >
+        <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+      </TouchableOpacity>
     </View>
   );
 
