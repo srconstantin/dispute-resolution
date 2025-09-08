@@ -116,13 +116,39 @@ export default function ContactsScreen({ navigation, token }) {
     }
   };
 
- const handleRemoveContact = (contactItem) => {
-  console.log('🗑️ Step 1: handleRemoveContact function entered');
-  console.log('🗑️ Step 2: contactItem received:', contactItem);
+const handleRemoveContact = (contactItem) => {
+  console.log('🗑️ handleRemoveContact called with:', contactItem);
   
-  try {
-    console.log('🗑️ Step 3: About to call Alert.alert');
+  const performDelete = async () => {
+    try {
+      console.log('🗑️ About to call removeContact API');
+      const result = await removeContact(contactItem.id, token);
+      console.log('🗑️ removeContact API result:', result);
+      
+      showSuccess('Contact removed successfully');
+      console.log('🗑️ About to call loadContacts');
+      await loadContacts();
+      console.log('🗑️ loadContacts completed');
+    } catch (error) {
+      console.error('🗑️ Error in remove process:', error);
+      showError(error.message || 'Failed to remove contact');
+    }
+  };
+
+  if (Platform.OS === 'web') {
+    // Use browser confirm dialog for web
+    const confirmed = window.confirm(
+      `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`
+    );
     
+    if (confirmed) {
+      console.log('🗑️ User confirmed deletion (web)');
+      performDelete();
+    } else {
+      console.log('🗑️ User cancelled deletion (web)');
+    }
+  } else {
+    // Use React Native Alert for mobile
     Alert.alert(
       'Remove Contact',
       `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`,
@@ -130,34 +156,18 @@ export default function ContactsScreen({ navigation, token }) {
         {
           text: 'Cancel',
           style: 'cancel',
-          onPress: () => console.log('🗑️ Cancel pressed')
+          onPress: () => console.log('🗑️ User cancelled deletion (mobile)')
         },
         {
           text: 'Remove',
           style: 'destructive',
-          onPress: async () => {
-            console.log('🗑️ Remove button pressed in modal');
-            try {
-              console.log('🗑️ About to call removeContact API');
-              const result = await removeContact(contactItem.id, token);
-              console.log('🗑️ removeContact API result:', result);
-              
-              showSuccess('Contact removed successfully');
-              console.log('🗑️ About to call loadContacts');
-              await loadContacts();
-              console.log('🗑️ loadContacts completed');
-            } catch (error) {
-              console.error('🗑️ Error in remove process:', error);
-              showError(error.message || 'Failed to remove contact');
-            }
+          onPress: () => {
+            console.log('🗑️ User confirmed deletion (mobile)');
+            performDelete();
           }
         }
       ]
     );
-    
-    console.log('🗑️ Step 4: Alert.alert call completed');
-  } catch (error) {
-    console.error('🗑️ Error in handleRemoveContact:', error);
   }
 };
 
