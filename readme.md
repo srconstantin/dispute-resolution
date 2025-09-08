@@ -59,9 +59,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
-
---show a FairEnough title/logo in browser tabs
-
 -- show all participants' accounts of a dispute to all participants.
 
 
