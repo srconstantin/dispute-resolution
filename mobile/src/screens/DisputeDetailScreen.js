@@ -450,7 +450,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             </View>
           </View>
         )}
-        // Modified original Response Section - only show for users who haven't responded yet
+
         {canSubmitResponse && !currentUserParticipant?.response_text && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Your Response</Text>
@@ -483,6 +483,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             </TouchableOpacity>
           </View>
         )}
+
           {/* Completed Dispute - Show Verdict */}
           {dispute.status === 'completed' && (
             <View style={styles.section}>
@@ -594,11 +595,15 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
 
-  deleteButton: {
-    backgroundColor: '#DC2626', // Red color for delete
-  },
+deleteButton: {
+  backgroundColor: '#DC2626',
+  flex: 0, 
+  paddingHorizontal: theme.spacing.md, 
+  minWidth: 120,
+},
+
   leaveButton: {
-    backgroundColor: '#F59E0B', // Orange color for leave
+    backgroundColor: '#F59E0B', 
   },
 
   actionButtonText: {
