@@ -34,6 +34,15 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
 
+  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
+  const isCreator = dispute.creator_id === currentUserId;
+  const isInvited = currentUserParticipant?.status === 'invited';
+  const isAccepted = currentUserParticipant?.status === 'accepted';
+  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
+  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
+  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
+
+
   useEffect(() => {
     loadDisputeDetails();
   }, []);
@@ -268,13 +277,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     );
   }
 
-  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
-  const isCreator = dispute.creator_id === currentUserId;
-  const isInvited = currentUserParticipant?.status === 'invited';
-  const isAccepted = currentUserParticipant?.status === 'accepted';
-  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
-  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
-  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
 
 
   const formatDate = (dateString) => {
