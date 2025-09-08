@@ -157,7 +157,10 @@ export default function ContactsScreen({ navigation, token }) {
       </View>
       <TouchableOpacity 
         style={styles.removeButton}
-        onPress={() => handleRemoveContact(item)}
+        onPress={() => {
+          console.log('🔥 BUTTON PRESSED!', item.contact_name);
+          alert('Button works!');
+        }}
       >
         <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
       </TouchableOpacity>
@@ -173,7 +176,8 @@ export default function ContactsScreen({ navigation, token }) {
       <View style={styles.buttonContainer}>
         <TouchableOpacity 
           style={styles.approveButton}
-          onPress={() => handleApproveRequest(item.id)}
+          onPress={() => 
+            handleApproveRequest(item.id)}
         >
           <Text style={styles.buttonText}>Accept</Text>
         </TouchableOpacity>
