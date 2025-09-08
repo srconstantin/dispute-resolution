@@ -8,7 +8,9 @@ const {
   submitDisputeResponse,
   updateDisputeVerdict,
   getUserContacts,
-  getUserByEmail
+  getUserByEmail,
+  deleteDispute,
+  leaveDispute
 } = require('../database');
 
 const router = express.Router();
@@ -282,6 +284,63 @@ router.put('/:id/response', authenticateToken, (req, res) => {
         result 
       });
     }
+  });
+});
+
+// DELETE /api/disputes/:id - Delete a dispute (creator only)
+router.delete('/:id', authenticateToken, (req, res) => {
+  const dispute_id = parseInt(req.params.id);
+  
+  if (isNaN(dispute_id)) {
+    return res.status(400).json({ error: 'Invalid dispute ID' });
+  }
+  
+  deleteDispute(dispute_id, req.user.userId, (err, result) => {
+    if (err) {
+      console.error('Error deleting dispute:', err);
+      if (err.message === 'Dispute not found') {
+        return res.status(404).json({ error: 'Dispute not found' });
+      }
+      if (err.message === 'Only the dispute creator can delete the dispute') {
+        return res.status(403).json({ error: 'Only the dispute creator can delete the dispute' });
+      }
+      return res.status(500).json({ error: 'Failed to delete dispute' });
+    }
+    
+    res.json({ 
+      message: result.message,
+      result 
+    });
+  });
+});
+
+// PUT /api/disputes/:id/leave - Leave a dispute (participants only)
+router.put('/:id/leave', authenticateToken, (req, res) => {
+  const dispute_id = parseInt(req.params.id);
+  
+  if (isNaN(dispute_id)) {
+    return res.status(400).json({ error: 'Invalid dispute ID' });
+  }
+  
+  leaveDispute(dispute_id, req.user.userId, (err, result) => {
+    if (err) {
+      console.error('Error leaving dispute:', err);
+      if (err.message === 'You are not a participant in this dispute') {
+        return res.status(404).json({ error: 'You are not a participant in this dispute' });
+      }
+      if (err.message === 'Dispute creators cannot leave their own dispute. Use delete instead.') {
+        return res.status(403).json({ error: 'Dispute creators cannot leave their own dispute. Use delete instead.' });
+      }
+      if (err.message === 'Cannot leave a completed dispute') {
+        return res.status(403).json({ error: 'Cannot leave a completed dispute' });
+      }
+      return res.status(500).json({ error: 'Failed to leave dispute' });
+    }
+    
+    res.json({ 
+      message: result.message,
+      result 
+    });
   });
 });
 

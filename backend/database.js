@@ -182,6 +182,53 @@ const createDispute = async (disputeData, callback) => {
   }
 };
 
+const deleteDispute = async (dispute_id, user_id, callback) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // First, verify that the user is the creator of the dispute
+    const disputeCheck = await client.query(
+      'SELECT creator_id FROM disputes WHERE id = $1',
+      [dispute_id]
+    );
+    
+    if (disputeCheck.rows.length === 0) {
+      throw new Error('Dispute not found');
+    }
+    
+    if (disputeCheck.rows[0].creator_id !== user_id) {
+      throw new Error('Only the dispute creator can delete the dispute');
+    }
+    
+    // Delete all participant records (including pending invitations)
+    await client.query(
+      'DELETE FROM dispute_participants WHERE dispute_id = $1',
+      [dispute_id]
+    );
+    
+    // Delete the dispute itself
+    const result = await client.query(
+      'DELETE FROM disputes WHERE id = $1',
+      [dispute_id]
+    );
+    
+    await client.query('COMMIT');
+    callback(null, { 
+      dispute_id, 
+      deleted: result.rowCount > 0,
+      message: 'Dispute deleted successfully'
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    callback(err, null);
+  } finally {
+    client.release();
+  }
+};
+
+
 const getDisputesByUser = async (user_id, callback) => {
   try {
     const result = await pool.query(`
@@ -314,6 +361,70 @@ const updateParticipantStatus = async (dispute_id, user_id, status, callback) =>
     
     await client.query('COMMIT');
     callback(null, { dispute_id, user_id, status });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    callback(err, null);
+  } finally {
+    client.release();
+  }
+};
+
+const leaveDispute = async (dispute_id, user_id, callback) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Check if the user is a participant in this dispute
+    const participantCheck = await client.query(
+      'SELECT dp.status, d.creator_id, d.status as dispute_status FROM dispute_participants dp JOIN disputes d ON dp.dispute_id = d.id WHERE dp.dispute_id = $1 AND dp.user_id = $2',
+      [dispute_id, user_id]
+    );
+    
+    if (participantCheck.rows.length === 0) {
+      throw new Error('You are not a participant in this dispute');
+    }
+    
+    const participant = participantCheck.rows[0];
+    
+    // Don't allow the creator to leave their own dispute
+    if (participant.creator_id === user_id) {
+      throw new Error('Dispute creators cannot leave their own dispute. Use delete instead.');
+    }
+    
+    // Don't allow leaving if the dispute is already completed or resolved
+    if (participant.dispute_status === 'completed' || participant.dispute_status === 'resolved') {
+      throw new Error('Cannot leave a completed dispute');
+    }
+    
+    // Remove the participant from the dispute
+    const result = await client.query(
+      'DELETE FROM dispute_participants WHERE dispute_id = $1 AND user_id = $2',
+      [dispute_id, user_id]
+    );
+    
+    // Check if there are any remaining accepted participants
+    const remainingParticipants = await client.query(`
+      SELECT COUNT(*) as count 
+      FROM dispute_participants 
+      WHERE dispute_id = $1 AND status = 'accepted'
+    `, [dispute_id]);
+    
+    // If no accepted participants remain (only creator), mark dispute as cancelled
+    if (parseInt(remainingParticipants.rows[0].count) <= 1) {
+      await client.query(
+        'UPDATE disputes SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['cancelled', dispute_id]
+      );
+    }
+    
+    await client.query('COMMIT');
+    callback(null, { 
+      dispute_id, 
+      user_id, 
+      left: result.rowCount > 0,
+      message: 'You have left the dispute'
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     callback(err, null);
@@ -595,6 +706,8 @@ const checkExistingContact = async (userEmail, contactEmail, callback) => {
 };
 
 
+
+
 const { generateVerdict } = require('./services/claude');
 
 
@@ -691,5 +804,7 @@ module.exports = {
   updateParticipantStatus,
   submitDisputeResponse,
   updateDisputeVerdict,
-  checkAndGenerateVerdict
+  checkAndGenerateVerdict,
+  deleteDispute,
+  leaveDispute
 };

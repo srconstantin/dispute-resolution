@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
-import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse } from '../services/api';
+import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse, deleteDispute, leaveDispute} from '../services/api';
 import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
@@ -55,6 +55,71 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
+  // Cross-platform confirmation dialog
+  const showConfirmDialog = (title, message, onConfirm, confirmText = 'Confirm') => {
+    if (Platform.OS === 'web') {
+      // Use window.confirm for web
+      const confirmed = window.confirm(`${title}\n\n${message}`);
+      if (confirmed) {
+        onConfirm();
+      }
+    } else {
+      // Use Alert.alert for mobile
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: confirmText,
+            style: 'destructive',
+            onPress: onConfirm
+          }
+        ]
+      );
+    }
+  };
+
+  const handleDeleteDispute = async () => {
+    showConfirmDialog(
+      'Delete Dispute',
+      'Are you sure you want to delete this dispute? This will permanently remove the dispute and all associated data. This action cannot be undone.',
+      async () => {
+        try {
+          setSubmitting(true);
+          await deleteDispute(disputeId, token);
+          showSuccess('Dispute deleted successfully');
+          navigation.goBack();
+        } catch (error) {
+          showError(error.message || 'Failed to delete dispute');
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      'Delete'
+    );
+  };
+
+  const handleLeaveDispute = async () => {
+    showConfirmDialog(
+      'Leave Dispute',
+      'Are you sure you want to leave this dispute? You will no longer be able to participate and cannot rejoin later.',
+      async () => {
+        try {
+          setSubmitting(true);
+          await leaveDispute(disputeId, token);
+          showSuccess('You have left the dispute');
+          navigation.goBack();
+        } catch (error) {
+          showError(error.message || 'Failed to leave dispute');
+        } finally {
+          setSubmitting(false);
+        }
+      },
+      'Leave'
+    );
+  };
+
   const handleJoinDispute = async () => {
     try {
       setSubmitting(true);
@@ -69,32 +134,27 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
+
   const handleRejectDispute = async () => {
-    Alert.alert(
+    showConfirmDialog(
       'Reject Dispute',
       'Are you sure you want to reject this dispute? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reject',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setSubmitting(true);
-              await rejectDispute(disputeId, token);
-              showSuccess('You have rejected the dispute!');
-              loadDisputeDetails();
-
-            } catch (error) {
-              showError(error.message || 'Failed to reject dispute');
-            } finally {
-              setSubmitting(false);
-            }
-          }
+      async () => {
+        try {
+          setSubmitting(true);
+          await rejectDispute(disputeId, token);
+          showSuccess('You have rejected the dispute');
+          navigation.goBack();
+        } catch (error) {
+          showError(error.message || 'Failed to reject dispute');
+        } finally {
+          setSubmitting(false);
         }
-      ]
+      },
+      'Reject'
     );
   };
+
 
   const handleSubmitResponse = async () => {
     if (!responseText.trim()) {
@@ -120,6 +180,14 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
+  const currentUserParticipant = dispute.participants.find(p => p.user_id === currentUserId);
+  const isCreator = dispute.creator_id === currentUserId;
+  const isInvited = currentUserParticipant?.status === 'invited';
+  const isAccepted = currentUserParticipant?.status === 'accepted';
+  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
+  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
+  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
@@ -143,61 +211,22 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     return participant.status;
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Dispute Details</Text>
-        </View>
-        <View style={styles.centerContainer}>
-          <Text style={styles.loadingText}>Loading dispute...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!dispute) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton} 
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Dispute Details</Text>
-        </View>
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>Dispute not found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const currentUserParticipant = getCurrentUserParticipant();
-  const canSubmitResponse = currentUserParticipant?.status === 'accepted' && dispute.status === 'ongoing';
-  const isInvited = currentUserParticipant?.status === 'invited';
+  const markdownStyles = {
+    body: {
+      fontSize: 16,
+      lineHeight: 24,
+      color: theme.colors.text,
+      fontFamily: theme.fonts.body,
+    },
+    paragraph: {
+      marginBottom: theme.spacing.md,
+    },
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Toast 
-        message={toast.message}
-        type={toast.type}
-        visible={toast.visible}
-        onHide={hideToast}
-      />
-
       <KeyboardAvoidingView 
-        style={styles.container}
+        style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View style={styles.header}>
@@ -253,13 +282,47 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             </View>
           )}
 
+          {/* Action Buttons for Creator and Participants */}
+          {(canDelete || canLeave) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Actions</Text>
+              {canDelete && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={handleDeleteDispute}
+                  disabled={submitting}
+                >
+                  <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
+                  <Text style={styles.actionButtonText}>
+                    {submitting ? 'Deleting...' : 'Delete Dispute'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              {canLeave && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.leaveButton]}
+                  onPress={handleLeaveDispute}
+                  disabled={submitting}
+                >
+                  <Ionicons name="exit-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
+                  <Text style={styles.actionButtonText}>
+                    {submitting ? 'Leaving...' : 'Leave Dispute'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* Participants */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Participants</Text>
             {dispute.participants.map((participant, index) => (
               <View key={index} style={styles.participantItem}>
                 <View style={styles.participantInfo}>
-                  <Text style={styles.participantName}>{participant.name}</Text>
+                  <Text style={styles.participantName}>
+                    {participant.name}
+                    {participant.user_id === dispute.creator_id && ' (Creator)'}
+                  </Text>
                   <Text style={styles.participantEmail}>{participant.email}</Text>
                 </View>
                 <Text style={styles.participantStatus}>
@@ -316,11 +379,18 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             </View>
           )}
         </ScrollView>
+
+        {toast.visible && (
+          <Toast 
+            message={toast.message}
+            type={toast.type}
+            onHide={hideToast}
+          />
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -407,6 +477,14 @@ const styles = StyleSheet.create({
   rejectButton: {
     backgroundColor: theme.colors.error,
   },
+
+  deleteButton: {
+    backgroundColor: '#DC2626', // Red color for delete
+  },
+  leaveButton: {
+    backgroundColor: '#F59E0B', // Orange color for leave
+  },
+
   actionButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
@@ -502,15 +580,3 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body,
   },
 });
-
-const markdownStyles = {
-  body: {
-    fontSize: 16,
-    color: theme.colors.text,
-    fontFamily: theme.fonts.body,
-  },
-  paragraph: {
-    marginTop: 0,
-    marginBottom: 8,
-  },
-};

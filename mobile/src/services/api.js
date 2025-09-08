@@ -274,6 +274,50 @@ export const rejectDispute = async (disputeId, token) => {
   }
 };
 
+export const deleteDispute = async (disputeId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete dispute');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const leaveDispute = async (disputeId, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}/leave`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to leave dispute');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const submitDisputeResponse = async (disputeId, responseText, token) => {
   try {
     const response = await fetch(`${API_URL}/disputes/${disputeId}/response`, {
