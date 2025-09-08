@@ -116,38 +116,58 @@ export default function ContactsScreen({ navigation, token }) {
     }
   };
 
-  const handleRemoveContact = (contactItem) => {
+ const handleRemoveContact = (contactItem) => {
+  console.log('🗑️ Step 1: handleRemoveContact function entered');
+  console.log('🗑️ Step 2: contactItem received:', contactItem);
+  
+  try {
+    console.log('🗑️ Step 3: About to call Alert.alert');
+    
     Alert.alert(
       'Remove Contact',
       `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`,
       [
         {
           text: 'Cancel',
-          style: 'cancel'
+          style: 'cancel',
+          onPress: () => console.log('🗑️ Cancel pressed')
         },
         {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
+            console.log('🗑️ Remove button pressed in modal');
             try {
-              await removeContact(contactItem.id, token);
+              console.log('🗑️ About to call removeContact API');
+              const result = await removeContact(contactItem.id, token);
+              console.log('🗑️ removeContact API result:', result);
+              
               showSuccess('Contact removed successfully');
-              loadContacts();
+              console.log('🗑️ About to call loadContacts');
+              await loadContacts();
+              console.log('🗑️ loadContacts completed');
             } catch (error) {
+              console.error('🗑️ Error in remove process:', error);
               showError(error.message || 'Failed to remove contact');
             }
           }
         }
       ]
     );
-  };
-
+    
+    console.log('🗑️ Step 4: Alert.alert call completed');
+  } catch (error) {
+    console.error('🗑️ Error in handleRemoveContact:', error);
+  }
+};
 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadContacts();
     setRefreshing(false);
   };
+
+
 
   const renderContact = ({ item }) => (
     <View style={styles.contactItem}>
