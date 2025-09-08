@@ -10,7 +10,8 @@ const {
   getUserContacts,
   getUserByEmail,
   deleteDispute,
-  leaveDispute
+  leaveDispute,
+  addParticipantsToDispute
 } = require('../database');
 
 const router = express.Router();
@@ -209,6 +210,117 @@ router.put('/:id/reject', authenticateToken, (req, res) => {
     res.json({ 
       message: 'Dispute invitation rejected',
       result 
+    });
+  });
+});
+
+// POST /api/disputes/:id/invite - Invite more participants to existing dispute
+router.post('/:id/invite', authenticateToken, (req, res) => {
+  const dispute_id = parseInt(req.params.id);
+  const { participant_emails } = req.body;
+  
+  if (isNaN(dispute_id)) {
+    return res.status(400).json({ error: 'Invalid dispute ID' });
+  }
+  
+  if (!participant_emails || !Array.isArray(participant_emails) || participant_emails.length === 0) {
+    return res.status(400).json({ error: 'At least one participant email is required' });
+  }
+  
+  // First, get the dispute to verify permissions
+  getDisputeById(dispute_id, (err, dispute) => {
+    if (err) {
+      console.error('Error fetching dispute:', err);
+      return res.status(500).json({ error: 'Failed to fetch dispute' });
+    }
+    
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    
+    // Only the creator can invite more participants
+    if (dispute.creator_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Only the dispute creator can invite more participants' });
+    }
+    
+    // Only allow inviting to active disputes
+    if (dispute.status !== 'active') {
+      return res.status(400).json({ error: 'Cannot invite participants to a completed or cancelled dispute' });
+    }
+    
+    // Get user's contacts to verify they can invite these people
+    getUserContacts(req.user.email, (err, result) => {
+      if (err) {
+        console.error('Error fetching contacts:', err);
+        return res.status(500).json({ error: 'Failed to verify contacts' });
+      }
+      
+      // Create a map of contact emails to user IDs
+      const contactEmails = result.contacts.map(contact => contact.contact_email);
+      const contactEmailMap = {};
+      
+      // Look up user IDs for each contact email
+      let completed = 0;
+      if (contactEmails.length === 0) {
+        return res.status(400).json({ error: 'You need contacts to invite participants' });
+      }
+      
+      participant_emails.forEach(email => {
+        getUserByEmail(email, (err, user) => {
+          if (!err && user) {
+            contactEmailMap[email] = user.id;
+          }
+          completed++;
+          
+          if (completed === participant_emails.length) {
+            // Continue with invitation logic
+            processInvitations();
+          }
+        });
+      });
+
+      function processInvitations() {
+        // Verify all participant emails are in user's contacts
+        const participant_ids = [];
+        const invalid_emails = [];
+        const existing_participants = dispute.participants.map(p => p.email);
+        const duplicate_emails = [];
+        
+        participant_emails.forEach(email => {
+          if (existing_participants.includes(email)) {
+            duplicate_emails.push(email);
+          } else if (contactEmailMap[email]) {
+            participant_ids.push(contactEmailMap[email]);
+          } else {
+            invalid_emails.push(email);
+          }
+        });
+        
+        if (duplicate_emails.length > 0) {
+          return res.status(400).json({ 
+            error: `These users are already participants in this dispute: ${duplicate_emails.join(', ')}` 
+          });
+        }
+        
+        if (invalid_emails.length > 0) {
+          return res.status(400).json({ 
+            error: `These emails are not in your contacts: ${invalid_emails.join(', ')}` 
+          });
+        }
+        
+        // Add the new participants to the dispute
+        addParticipantsToDispute(dispute_id, participant_ids, (err, result) => {
+          if (err) {
+            console.error('Error adding participants to dispute:', err);
+            return res.status(500).json({ error: 'Failed to add participants to dispute' });
+          }
+          
+          res.status(200).json({ 
+            message: `Successfully invited ${participant_ids.length} participant(s) to the dispute`,
+            invited_count: participant_ids.length
+          });
+        });
+      }
     });
   });
 });

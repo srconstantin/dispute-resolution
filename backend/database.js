@@ -228,6 +228,38 @@ const deleteDispute = async (dispute_id, user_id, callback) => {
   }
 };
 
+const addParticipantsToDispute = (dispute_id, participant_ids, callback) => {
+  if (!participant_ids || participant_ids.length === 0) {
+    return callback(new Error('No participant IDs provided'));
+  }
+  
+  // Create the values string for the SQL query
+  const values = participant_ids.map((_, index) => {
+    const offset = index * 2;
+    return `($${offset + 1}, $${offset + 2})`;
+  }).join(', ');
+  
+  // Create the parameters array
+  const params = [];
+  participant_ids.forEach(participant_id => {
+    params.push(dispute_id, participant_id);
+  });
+  
+  const query = `
+    INSERT INTO dispute_participants (dispute_id, user_id, status, joined_at) 
+    VALUES ${values}
+  `;
+  
+  pool.query(query, params, (err, result) => {
+    if (err) {
+      console.error('Database error adding participants to dispute:', err);
+      return callback(err);
+    }
+    
+    console.log(`Added ${result.rowCount} participants to dispute ${dispute_id}`);
+    callback(null, result);
+  });
+};
 
 const getDisputesByUser = async (user_id, callback) => {
   try {
@@ -806,5 +838,6 @@ module.exports = {
   updateDisputeVerdict,
   checkAndGenerateVerdict,
   deleteDispute,
-  leaveDispute
+  leaveDispute,
+  addParticipantsToDispute
 };

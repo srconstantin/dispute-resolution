@@ -9,7 +9,9 @@ import {
   SafeAreaView,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Modal,
+  FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
@@ -26,6 +28,11 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   const [submitting, setSubmitting] = useState(false);
   const { toast, showSuccess, showError, hideToast } = useToast();
   const [editingResponse, setEditingResponse] = useState(false);
+
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [availableContacts, setAvailableContacts] = useState([]);
+  const [selectedContacts, setSelectedContacts] = useState([]);
+  const [loadingContacts, setLoadingContacts] = useState(false);
 
   useEffect(() => {
     loadDisputeDetails();
@@ -180,6 +187,66 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
       setSubmitting(false);
     }
   };
+
+  // Add permission check for inviting (add this with other permission checks)
+  const canInvite = isCreator && dispute.status === 'active';
+
+// Add these handler functions
+  const handleInviteMoreContacts = async () => {
+    try {
+      setLoadingContacts(true);
+      const data = await getContacts(token);
+    
+    // Filter out contacts who are already participants
+      const existingEmails = dispute.participants.map(p => p.email);
+      const available = data.contacts.filter(contact => 
+        !existingEmails.includes(contact.contact_email)
+      );
+    
+      setAvailableContacts(available);
+      setSelectedContacts([]);
+      setShowInviteModal(true);
+    } catch (error) {
+      showError('Failed to load contacts');
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  const toggleContactSelection = (contact) => {
+    setSelectedContacts(prev => {
+      const isSelected = prev.find(c => c.contact_email === contact.contact_email);
+      if (isSelected) {
+        return prev.filter(c => c.contact_email !== contact.contact_email);
+      } else {
+        return [...prev, contact];
+      }
+    });
+  };
+
+  const handleSendInvitations = async () => {
+    if (selectedContacts.length === 0) {
+      showError('Please select at least one contact to invite');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const participant_emails = selectedContacts.map(c => c.contact_email);
+    
+      // You'll need to create this API endpoint
+      await inviteToDispute(disputeId, participant_emails, token);
+    
+      showSuccess(`Invited ${selectedContacts.length} contact(s) to the dispute`);
+      setShowInviteModal(false);
+      loadDisputeDetails(); // Refresh dispute data
+    } catch (error) {
+      showError(error.message || 'Failed to send invitations');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
  
  if (loading) {
     return (
@@ -305,9 +372,23 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
           )}
 
           {/* Action Buttons for Creator and Participants */}
-          {(canDelete || canLeave) && (
+          {(canDelete || canLeave || canInvite) && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Actions</Text>
+              {canInvite && (
+                <TouchableOpacity 
+                  style={[styles.actionButton, styles.inviteButton]}
+                  onPress={handleInviteMoreContacts}
+                  disabled={submitting || loadingContacts}
+                >
+                  <Ionicons name="person-add-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
+                  <Text style={styles.actionButtonText}>
+                    {loadingContacts ? 'Loading...' : 'Invite More Contacts'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+
               {canDelete && (
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.deleteButton]}
@@ -320,6 +401,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
                   </Text>
                 </TouchableOpacity>
               )}
+
               {canLeave && (
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.leaveButton]}
@@ -505,6 +587,72 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
           />
         )}
       </KeyboardAvoidingView>
+
+        {/* Invite More Contacts Modal */}
+        {showInviteModal && (
+          <Modal
+            visible={showInviteModal}
+            animationType="slide"
+            presentationStyle="pageSheet"
+          >
+            <SafeAreaView style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <TouchableOpacity onPress={() => setShowInviteModal(false)}>
+                  <Text style={styles.cancelButton}>Cancel</Text>
+                </TouchableOpacity>
+                <Text style={styles.modalTitle}>Invite Contacts</Text>
+                <TouchableOpacity 
+                  onPress={handleSendInvitations}
+                  disabled={selectedContacts.length === 0 || submitting}
+                >
+                  <Text style={[
+                    styles.sendButton,
+                    (selectedContacts.length === 0 || submitting) && styles.buttonDisabled
+                 ]}>
+                    {submitting ? 'Sending...' : 'Send'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+      
+              <View style={styles.modalContent}>
+                <Text style={styles.modalSubtitle}>
+                  Select contacts to invite to this dispute ({selectedContacts.length} selected)
+                </Text>
+        
+                {availableContacts.length === 0 ? (
+                  <View style={styles.centerContainer}>
+                    <Text style={styles.emptyText}>No additional contacts available to invite</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={availableContacts}
+                    renderItem={({ item }) => {
+                      const isSelected = selectedContacts.find(c => c.contact_email === item.contact_email);
+              
+                      return (
+                        <TouchableOpacity 
+                          style={[styles.contactItem, isSelected && styles.selectedContact]}
+                          onPress={() => toggleContactSelection(item)}
+                        >
+                          <View style={styles.contactInfo}>
+                            <Text style={styles.contactName}>{item.contact_name}</Text>
+                            <Text style={styles.contactEmail}>{item.contact_email}</Text>
+                          </View>
+                          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                            {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    }}
+                    keyExtractor={(item) => item.contact_email}
+                    showsVerticalScrollIndicator={false}
+                  />
+                )}
+              </View>
+            </SafeAreaView>
+          </Modal>
+        )}
+
     </SafeAreaView>
   );
 }
@@ -595,15 +743,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.error,
   },
 
-deleteButton: {
-  backgroundColor: '#DC2626',
-  flex: 0, 
-  paddingHorizontal: theme.spacing.md, 
-  minWidth: 120,
-},
-
+  deleteButton: {
+    backgroundColor: '#DC2626', // Red color for delete
+  },
   leaveButton: {
-    backgroundColor: '#F59E0B', 
+    backgroundColor: '#F59E0B', // Orange color for leave
   },
 
   actionButtonText: {
