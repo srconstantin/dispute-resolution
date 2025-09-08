@@ -244,7 +244,7 @@ router.post('/:id/invite', authenticateToken, (req, res) => {
     }
     
     // Only allow inviting to active disputes
-    if (dispute.status !== 'active') {
+    if (dispute.status !== 'ongoing') {
       return res.status(400).json({ error: 'Cannot invite participants to a completed or cancelled dispute' });
     }
     

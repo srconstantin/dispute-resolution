@@ -34,14 +34,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
 
-  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
-  const isCreator = dispute.creator_id === currentUserId;
-  const isInvited = currentUserParticipant?.status === 'invited';
-  const isAccepted = currentUserParticipant?.status === 'accepted';
-  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
-  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
-  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
-
 
   useEffect(() => {
     loadDisputeDetails();
@@ -197,8 +189,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
-  // Add permission check for inviting (add this with other permission checks)
-  const canInvite = isCreator && dispute.status === 'active';
 
 // Add these handler functions
   const handleInviteMoreContacts = async () => {
@@ -276,6 +266,15 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
       </SafeAreaView>
     );
   }
+
+  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
+  const isCreator = dispute.creator_id === currentUserId;
+  const isInvited = currentUserParticipant?.status === 'invited';
+  const isAccepted = currentUserParticipant?.status === 'accepted';
+  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
+  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
+  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
+  const canInvite = isCreator && dispute.status === 'ongoing'; // Use 'ongoing' instead of 'active'
 
 
 

@@ -340,3 +340,26 @@ export const submitDisputeResponse = async (disputeId, responseText, token) => {
     throw error;
   }
 };
+
+export const inviteToDispute = async (disputeId, participant_emails, token) => {
+  try {
+    const response = await fetch(`${API_URL}/disputes/${disputeId}/invite`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ participant_emails }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to invite participants');
+    }
+
+    return data;
+  } catch (error) {
+    throw error;
+  }
+};
