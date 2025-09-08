@@ -25,6 +25,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { toast, showSuccess, showError, hideToast } = useToast();
+  const [editingResponse, setEditingResponse] = useState(false);
 
   useEffect(() => {
     loadDisputeDetails();
@@ -353,41 +354,135 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             ))}
           </View>
 
-          {/* Response Section */}
-          {canSubmitResponse && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Response</Text>
-              <Text style={styles.responsePrompt}>
-                Describe the dispute in your own words. What happened? What did you do? 
-                What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?
-              </Text>
-              <TextInput
-                style={styles.responseInput}
-                placeholder="Share your side of the story..."
-                value={responseText}
-                onChangeText={setResponseText}
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>{responseText.length} characters</Text>
-              
+
+          {/* Participants' Personal Accounts */}
+            {dispute.participants.some(p => p.response_text) && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Participants' personal accounts of the dispute</Text>
+                {dispute.participants
+                .filter(p => p.response_text)
+                .map((participant, index) => (
+                <View key={index} style={styles.responseContainer}>
+                  <Text style={styles.responseAuthor}>
+                    {participant.name}
+                    {participant.user_id === dispute.creator_id && ' (Creator)'}
+                    {participant.user_id === currentUserId && ' (You)'}
+                  </Text>
+          
+                  {participant.user_id === currentUserId ? (
+                    // Current user's response - clickable to edit
+                    <TouchableOpacity 
+                      style={styles.editableResponse}
+                      onPress={() => {
+                        setResponseText(participant.response_text);
+                        setEditingResponse(true);
+                      }}
+                      disabled={dispute.status !== 'ongoing'}
+                    >
+                      <Text style={styles.responseText}>{participant.response_text}</Text>
+                      {dispute.status === 'ongoing' && (
+                        <Text style={styles.editHint}>Tap to edit your response</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : (
+                    // Other participants' responses - read-only
+                    <View style={styles.readOnlyResponse}>
+                      <Text style={styles.responseText}>{participant.response_text}</Text>
+                    </View>
+                  )}
+          
+                  {participant.response_submitted_at && (
+                    <Text style={styles.responseTimestamp}>
+                      Submitted {formatDate(participant.response_submitted_at)}
+                    </Text>
+                  )}
+                </View>
+              ))}
+          </View>
+        )}
+
+        {/* Edit Response Modal/Section */}
+        {editingResponse && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Edit Your Response</Text>
+            <Text style={styles.responsePrompt}>
+              Describe the dispute in your own words. What happened? What did you do? 
+              What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?
+            </Text>
+            <TextInput
+              style={styles.responseInput}
+              placeholder="Share your side of the story..."
+              value={responseText}
+              onChangeText={setResponseText}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>{responseText.length} characters</Text>
+    
+           <View style={styles.editButtonContainer}>
               <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  (!responseText.trim() || submitting) && styles.buttonDisabled
-                ]}
-                onPress={handleSubmitResponse}
-                disabled={!responseText.trim() || submitting}
+                style={[styles.actionButton, styles.cancelButton]}
+                onPress={() => {
+                  setEditingResponse(false);
+                  setResponseText(currentUserParticipant?.response_text || '');
+                }}
               >
-                <Text style={styles.submitButtonText}>
-                  {submitting ? 'Submitting...' : 
-                   currentUserParticipant?.response_text ? 'Update Response' : 'Submit Response'}
+                <Text style={styles.actionButtonText}>Cancel</Text>
+              </TouchableOpacity>
+      
+              <TouchableOpacity
+                  style={[
+                    styles.actionButton, 
+                    styles.saveButton,
+                    (!responseText.trim() || submitting) && styles.buttonDisabled
+                  ]}
+                  onPress={() => {
+                    handleSubmitResponse();
+                    setEditingResponse(false);
+                  }}
+                  disabled={!responseText.trim() || submitting}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {submitting ? 'Saving...' : 'Save Changes'}
                 </Text>
               </TouchableOpacity>
             </View>
-          )}
-
+          </View>
+        )}
+        // Modified original Response Section - only show for users who haven't responded yet
+        {canSubmitResponse && !currentUserParticipant?.response_text && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Your Response</Text>
+            <Text style={styles.responsePrompt}>
+              Describe the dispute in your own words. What happened? What did you do? 
+              What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?
+            </Text>
+            <TextInput
+              style={styles.responseInput}
+              placeholder="Share your side of the story..."
+              value={responseText}
+              onChangeText={setResponseText}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+            />
+            <Text style={styles.characterCount}>{responseText.length} characters</Text>
+    
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                (!responseText.trim() || submitting) && styles.buttonDisabled
+              ]}
+              onPress={handleSubmitResponse}
+              disabled={!responseText.trim() || submitting}
+            >
+              <Text style={styles.submitButtonText}>
+                {submitting ? 'Submitting...' : 'Submit Response'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
           {/* Completed Dispute - Show Verdict */}
           {dispute.status === 'completed' && (
             <View style={styles.section}>
@@ -599,5 +694,64 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.error,
     fontFamily: theme.fonts.body,
+  },
+  responseContainer: {
+    backgroundColor: theme.colors.cardBackground,
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  responseAuthor: {
+    fontSize: 16,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: theme.spacing.sm,
+  },
+  editableResponse: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+    borderStyle: 'dashed',
+  },
+  readOnlyResponse: {
+    backgroundColor: theme.colors.background,
+    borderRadius: theme.borderRadius.small,
+    padding: theme.spacing.md,
+  },
+  responseText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: theme.colors.text,
+    fontFamily: theme.fonts.body,
+  },
+  editHint: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontStyle: 'italic',
+    marginTop: theme.spacing.sm,
+    fontFamily: theme.fonts.body,
+  },
+  responseTimestamp: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.sm,
+    fontFamily: theme.fonts.body,
+  },
+  editButtonContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.textSecondary,
+    flex: 1,
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+    flex: 1,
   },
 });
