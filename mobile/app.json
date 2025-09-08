@@ -31,11 +31,19 @@
       "bundleIdentifier": "com.srconstantin.fairenough",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
+      }
+    },
     "web": {
       "favicon": "./assets/bluespiral.png",
-      "bundler": "metro"
-      }
+      "bundler": "metro",
+      "name": "FairEnough",
+      "shortName": "FairEnough",
+      "description": "Dispute resolution made simple",
+      "themeColor": "#2563eb",
+      "backgroundColor": "#F5F2ED",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait"
     }
   }
 }
