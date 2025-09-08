@@ -179,14 +179,35 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
       setSubmitting(false);
     }
   };
+ 
+ if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  if (!dispute) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text>Dispute not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const currentUserParticipant = dispute.participants.find(p => p.user_id === currentUserId);
+  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
   const isCreator = dispute.creator_id === currentUserId;
   const isInvited = currentUserParticipant?.status === 'invited';
   const isAccepted = currentUserParticipant?.status === 'accepted';
   const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
   const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
   const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
+
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
