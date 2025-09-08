@@ -159,9 +159,11 @@ export default function ContactsScreen({ navigation, token }) {
         style={styles.removeButton}
         onPress={() => {
           console.log('🔥 BUTTON PRESSED!', item.contact_name);
-          console.log('🔥 handleRemoveContact function exists:', typeof handleRemoveContact);
-          console.log('🔥 item data:', item);
-          handleRemoveContact(item);
+          try {
+            handleRemoveContact(item);
+          } catch (error) {
+            console.error('🔥 Error calling handleRemoveContact:', error);
+          }       
         }}
       >
         <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
