@@ -47,7 +47,7 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --saves user info and contact info to sqlite database
 
---allows users to make disputes, add contacts to disputes, accept or reject dispute invitations, and input text into a dispute. 
+--allows users to make and delete disputes, add contacts to disputes, accept or reject dispute invitations, leave disputes, and input text into a dispute. 
 
 --saves disputes and their state (pending/accepted/rejected participants,  each participant's text, ongoing/cancelled/completed dispute status, dispute verdict) into the database
 
@@ -59,7 +59,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---allow creators to delete disputes and participants to leave disputes
 
 --show a FairEnough title/logo in browser tabs
 
