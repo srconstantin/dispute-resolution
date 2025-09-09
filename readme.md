@@ -60,9 +60,11 @@ Go to https://fairenough.netlify.app/ to use the app
 ## TODO
 --fix verdict generation
 
+--make sure email invites sent
+
 --display pending invitations
 
---experiment with different user inputs & evaluate LLM "verdicts"
+--maybe: allow multiple iterations of discussion before asking for a verdict
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
 
