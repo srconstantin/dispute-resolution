@@ -59,8 +59,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
--- debug email invites (again!)
-
 --display pending invitations
 
 --maybe: allow multiple iterations of discussion before asking for a verdict
