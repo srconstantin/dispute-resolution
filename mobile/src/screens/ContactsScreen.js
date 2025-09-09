@@ -333,30 +333,6 @@ export default function ContactsScreen({ navigation, token }) {
   );
 
 
-  const ListHeaderComponent = React.useCallback(() => (
-    <View style={styles.addContactSection}>
-      <Text style={styles.sectionTitle}>Add New Contact</Text>
-      <View style={styles.addContactRow}>
-        <TextInput
-          style={styles.emailInput}
-          placeholder="Enter email address"
-          value={newContactEmail}
-          onChangeText={setNewContactEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <TouchableOpacity 
-          style={[styles.addButton, loading && styles.buttonDisabled]}
-          onPress={handleAddContact}
-          disabled={loading}
-        >
-          <Text style={styles.addButtonText}>
-            {loading ? 'Sending...' : 'Add'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  ), [newContactEmail, loading, handleAddContact]);
 
   const ListEmptyComponent = () => (
     <View style={styles.emptyContainer}>
@@ -383,6 +359,29 @@ export default function ContactsScreen({ navigation, token }) {
           <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Contacts</Text>
+      </View>
+
+      <View style={styles.addContactSection}>
+        <Text style={styles.sectionTitle}>Add New Contact</Text>
+        <View style={styles.addContactRow}>
+          <TextInput
+            style={styles.emailInput}
+            placeholder="Enter email address"
+            value={newContactEmail}
+            onChangeText={setNewContactEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TouchableOpacity 
+            style={[styles.addButton, loading && styles.buttonDisabled]}
+            onPress={handleAddContact}
+            disabled={loading}
+          >
+            <Text style={styles.addButtonText}>
+              {loading ? 'Sending...' : 'Add'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <SectionList
