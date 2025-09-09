@@ -82,31 +82,6 @@ export default function HomeScreen({ navigation, user, token, onLogout }) {
           <Text style={styles.welcomeSubtitle}>Resolve disputes fairly and transparently</Text>
         </View>
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="time-outline" size={20} color={theme.colors.primary} />
-            </View>
-            <Text style={styles.statNumber}>{stats.activeDisputes}</Text>
-            <Text style={styles.statLabel}>Active Disputes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="checkmark-circle-outline" size={20} color={theme.colors.success} />
-            </View>
-            <Text style={styles.statNumber}>{stats.resolvedDisputes}</Text>
-            <Text style={styles.statLabel}>Resolved</Text>
-          </View>
-          <View style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="people-outline" size={20} color={theme.colors.primary} />
-            </View>
-            <Text style={styles.statNumber}>{stats.totalContacts}</Text>
-            <Text style={styles.statLabel}>Contacts</Text>
-          </View>
-        </View>
-
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>

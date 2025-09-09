@@ -19,6 +19,7 @@ import { useToast } from '../hooks/useToast';
 export default function ContactsScreen({ navigation, token }) {
   const [contacts, setContacts] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
+  const [outgoingPendingRequests, setOutgoingPendingRequests] = useState([]);
   const [newContactEmail, setNewContactEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +44,7 @@ export default function ContactsScreen({ navigation, token }) {
       const data = await getContacts(token);
       setContacts(data.contacts || []);
       setPendingRequests(data.pendingRequests || []);
+      setOutgoingPendingRequests(data.outgoingPendingRequests || []);      
     } catch (error) {
       showError('Failed to load contacts');
     }
@@ -225,6 +227,8 @@ const handleRemoveContact = (contactItem) => {
     </View>
   );
 
+
+
   return (
     <SafeAreaView style={styles.container}>
       <Toast 
@@ -278,6 +282,17 @@ const handleRemoveContact = (contactItem) => {
             keyExtractor={(item) => item.id.toString()}
             showsVerticalScrollIndicator={false}
           />
+        </View>
+      )}
+      
+      {outgoingPendingRequests.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Pending Invitations</Text>
+          {outgoingPendingRequests.map((item) => (
+            <View key={item.id}>
+              {renderOutgoingPendingRequest({ item })}
+            </View>
+          ))}
         </View>
       )}
 
@@ -403,6 +418,20 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
     gap: theme.spacing.lg,
   },
+
+  outgoingPendingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.small,
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  
   contactInfo: {
     flex: 1,
   },

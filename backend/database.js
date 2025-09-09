@@ -641,8 +641,37 @@ const getUserContacts = async (userEmail, callback) => {
       requester_name: encryption.decrypt(row.requester_name_encrypted),
       requester_email: encryption.decrypt(row.requester_email_encrypted)
     }));
+
+
+    // Get outgoing pending requests (where user is requester)
+    const outgoingPendingResult = await pool.query(`
+      SELECT 
+        c.id,
+        c.status,
+        c.created_at,
+        c.recipient_email_encrypted,
+        ru.name_encrypted as recipient_name_encrypted,
+        ru.email_encrypted as recipient_email_encrypted_from_user
+      FROM contacts c
+      LEFT JOIN users ru ON c.recipient_id = ru.id
+      WHERE c.requester_id = $1 AND c.status = 'pending'
+    `, [user.id]);
+
+    // Decrypt outgoing pending requests
+    const outgoingPendingRequests = outgoingPendingResult.rows.map(row => ({
+      id: row.id,
+      status: row.status,
+      created_at: row.created_at,
+      // If recipient exists in users table, use their name, otherwise use email
+      recipient_name: row.recipient_name_encrypted ? 
+        encryption.decrypt(row.recipient_name_encrypted) : 
+        encryption.decrypt(row.recipient_email_encrypted).split('@')[0], // Use email prefix as fallback
+      recipient_email: row.recipient_email_encrypted_from_user ? 
+        encryption.decrypt(row.recipient_email_encrypted_from_user) : 
+        encryption.decrypt(row.recipient_email_encrypted)
+    }));
         
-    callback(null, { contacts, pendingRequests });
+    callback(null, { contacts, pendingRequests, outgoingPendingRequests });
   } catch (err) {
     callback(err, null);
   }
