@@ -26,12 +26,11 @@ export default function ContactsScreen({ navigation, token }) {
   const [refreshing, setRefreshing] = useState(false);
   const { toast, showSuccess, showError, hideToast } = useToast();
 
-
   useEffect(() => {
     loadContacts();
   }, []);
 
-    // Focus listener to refresh data when returning to this screen
+  // Focus listener to refresh data when returning to this screen
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadContacts();
@@ -51,6 +50,7 @@ export default function ContactsScreen({ navigation, token }) {
     }
   };
 
+  // FIXED: Use useCallback to prevent function recreation
   const handleAddContact = React.useCallback(async () => {
     if (!newContactEmail.trim()) {
       showError('Please enter an email address')
@@ -84,6 +84,7 @@ export default function ContactsScreen({ navigation, token }) {
       showError('You already have a pending contact request for this email');
       return;
     }
+
     // Check if there's already an outgoing pending request for this email
     const outgoingRequest = outgoingPendingRequests.find(
       request => request.recipient_email.toLowerCase() === normalizedEmail
@@ -127,60 +128,60 @@ export default function ContactsScreen({ navigation, token }) {
     }
   };
 
-const handleRemoveContact = (contactItem) => {
-  console.log('🗑️ handleRemoveContact called with:', contactItem);
-  
-  const performDelete = async () => {
-    try {
-      console.log('🗑️ About to call removeContact API');
-      const result = await removeContact(contactItem.id, token);
-      console.log('🗑️ removeContact API result:', result);
+  const handleRemoveContact = (contactItem) => {
+    console.log('🗑️ handleRemoveContact called with:', contactItem);
+    
+    const performDelete = async () => {
+      try {
+        console.log('🗑️ About to call removeContact API');
+        const result = await removeContact(contactItem.id, token);
+        console.log('🗑️ removeContact API result:', result);
+        
+        showSuccess('Contact removed successfully');
+        console.log('🗑️ About to call loadContacts');
+        await loadContacts();
+        console.log('🗑️ loadContacts completed');
+      } catch (error) {
+        console.error('🗑️ Error in remove process:', error);
+        showError(error.message || 'Failed to remove contact');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      // Use browser confirm dialog for web
+      const confirmed = window.confirm(
+        `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`
+      );
       
-      showSuccess('Contact removed successfully');
-      console.log('🗑️ About to call loadContacts');
-      await loadContacts();
-      console.log('🗑️ loadContacts completed');
-    } catch (error) {
-      console.error('🗑️ Error in remove process:', error);
-      showError(error.message || 'Failed to remove contact');
+      if (confirmed) {
+        console.log('🗑️ User confirmed deletion (web)');
+        performDelete();
+      } else {
+        console.log('🗑️ User cancelled deletion (web)');
+      }
+    } else {
+      // Use React Native Alert for mobile
+      Alert.alert(
+        'Remove Contact',
+        `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+            onPress: () => console.log('🗑️ User cancelled deletion (mobile)')
+          },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => {
+              console.log('🗑️ User confirmed deletion (mobile)');
+              performDelete();
+            }
+          }
+        ]
+      );
     }
   };
-
-  if (Platform.OS === 'web') {
-    // Use browser confirm dialog for web
-    const confirmed = window.confirm(
-      `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`
-    );
-    
-    if (confirmed) {
-      console.log('🗑️ User confirmed deletion (web)');
-      performDelete();
-    } else {
-      console.log('🗑️ User cancelled deletion (web)');
-    }
-  } else {
-    // Use React Native Alert for mobile
-    Alert.alert(
-      'Remove Contact',
-      `Are you sure you want to remove ${contactItem.contact_name} from your contacts?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => console.log('🗑️ User cancelled deletion (mobile)')
-        },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            console.log('🗑️ User confirmed deletion (mobile)');
-            performDelete();
-          }
-        }
-      ]
-    );
-  }
-};
 
   const handleCancelPendingRequest = async (pendingRequest) => {
     const performCancel = async () => {
@@ -254,8 +255,6 @@ const handleRemoveContact = (contactItem) => {
     });
   }
 
-  
-
   const renderItem = ({ item, section }) => {
     switch (section.type) {
       case 'pending':
@@ -290,21 +289,21 @@ const handleRemoveContact = (contactItem) => {
               <Text style={styles.contactEmail}>{item.recipient_email}</Text>
               <Text style={styles.pendingStatus}>Pending response...</Text>
             </View>
-          <View style={styles.outgoingButtonContainer}>
-            <View style={styles.statusContainer}>
-              <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
-              <Text style={styles.statusText}>Sent</Text>
+            <View style={styles.outgoingButtonContainer}>
+              <View style={styles.statusContainer}>
+                <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
+                <Text style={styles.statusText}>Sent</Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => handleCancelPendingRequest(item)}
+              >
+                <Ionicons name="close-outline" size={16} color={theme.colors.error} />
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => handleCancelPendingRequest(item)}
-            >
-              <Ionicons name="close-outline" size={16} color={theme.colors.error} />
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      );
+        );
 
       case 'contacts':
         return (
@@ -332,6 +331,7 @@ const handleRemoveContact = (contactItem) => {
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
+
 
   const ListHeaderComponent = React.useCallback(() => (
     <View style={styles.addContactSection}>
@@ -401,8 +401,6 @@ const handleRemoveContact = (contactItem) => {
   );
 }
 
-
- 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -437,7 +435,6 @@ const styles = StyleSheet.create({
     left: '50%',
     transform: [{ translateX: -50 }],
   },
-
   addContactSection: {
     padding: theme.spacing.lg,
     borderBottomWidth: 1,
@@ -451,7 +448,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-
   sectionTitle: {
     fontSize: 18,
     fontFamily: theme.fonts.headingMedium,
@@ -489,7 +485,6 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     backgroundColor: theme.colors.textLight,
   },
-
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -500,7 +495,6 @@ const styles = StyleSheet.create({
     borderBottomColor: theme.colors.border,
     minHeight: 60,
   },
-
   pendingItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -523,7 +517,6 @@ const styles = StyleSheet.create({
     minHeight: 60,
     backgroundColor: '#f8f9fa',
   }, 
-  
   contactInfo: {
     flex: 1,
     marginRight: theme.spacing.md,
@@ -544,7 +537,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     numberOfLines: 2,
   },
-  
   pendingStatus: {
     fontSize: 12,
     fontFamily: theme.fonts.body,
@@ -557,7 +549,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-
   statusText: {
     fontSize: 12,
     fontFamily: theme.fonts.body,
@@ -584,19 +575,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body,
     color: theme.colors.error,
   },
-  outgoingButtonContainer: {
-    flexDirection: 'column',
-    alignItems: 'flex-end',
-    gap: theme.spacing.sm,
-  },
-   removeButton: {
+  removeButton: {
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.small,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.error,
   },
-
   buttonContainer: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
@@ -619,7 +604,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: theme.fonts.headingMedium,
   },
-    emptyContainer: {
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
