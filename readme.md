@@ -58,9 +58,8 @@ Go to https://fairenough.netlify.app/ to use the app
 --saves login and current page state (so reloads don't logout or redirect the user)
 
 ## TODO
---fix verdict generation
 
---make sure email invites sent
+-- debug email invites (again!)
 
 --display pending invitations
 
