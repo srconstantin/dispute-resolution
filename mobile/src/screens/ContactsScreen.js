@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  SectionList,
   FlatList,
   TextInput,
   Alert,
@@ -203,31 +204,133 @@ const handleRemoveContact = (contactItem) => {
     </View>
   );
 
-  const renderPendingRequest = ({ item }) => (
-    <View style={styles.pendingItem}>
-      <View style={styles.contactInfo}>
-        <Text style={styles.contactName}>{item.requester_name}</Text>
-        <Text style={styles.contactEmail}>{item.requester_email}</Text>
-      </View>
-      <View style={styles.buttonContainer}>
+  // Prepare sections data
+  const sections = [];
+
+ if (pendingRequests.length > 0) {
+    sections.push({
+      title: `Contact Requests (${pendingRequests.length})`,
+      data: pendingRequests,
+      type: 'pending'
+    });
+  }
+
+  if (outgoingPendingRequests.length > 0) {
+    sections.push({
+      title: `Pending Invitations (${outgoingPendingRequests.length})`,
+      data: outgoingPendingRequests,
+      type: 'outgoing'
+    });
+  }
+
+  if (contacts.length > 0) {
+    sections.push({
+      title: `My Contacts (${contacts.length})`,
+      data: contacts,
+      type: 'contacts'
+    });
+  }
+
+  const renderItem = ({ item, section }) => {
+    switch (section.type) {
+      case 'pending':
+        return (
+          <View style={styles.pendingItem}>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactName}>{item.requester_name}</Text>
+              <Text style={styles.contactEmail}>{item.requester_email}</Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity 
+                style={styles.approveButton}
+                onPress={() => handleApproveRequest(item.id)}
+              >
+                <Text style={styles.buttonText}>Accept</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.rejectButton}
+                onPress={() => handleRejectRequest(item.id)}
+              >
+                <Text style={styles.buttonText}>Reject</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+
+      case 'outgoing':
+        return (
+          <View style={styles.outgoingPendingItem}>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactName}>{item.recipient_name}</Text>
+              <Text style={styles.contactEmail}>{item.recipient_email}</Text>
+              <Text style={styles.pendingStatus}>Pending response...</Text>
+            </View>
+            <View style={styles.statusContainer}>
+              <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
+              <Text style={styles.statusText}>Sent</Text>
+            </View>
+          </View>
+        );
+
+      case 'contacts':
+        return (
+          <View style={styles.contactItem}>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactName}>{item.contact_name}</Text>
+              <Text style={styles.contactEmail}>{item.contact_email}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.removeButton}
+              onPress={() => handleRemoveContact(item)}
+            >
+              <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
+            </TouchableOpacity>
+          </View>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+  );
+
+  const ListHeaderComponent = () => (
+    <View style={styles.addContactSection}>
+      <Text style={styles.sectionTitle}>Add New Contact</Text>
+      <View style={styles.addContactRow}>
+        <TextInput
+          style={styles.emailInput}
+          placeholder="Enter email address"
+          value={newContactEmail}
+          onChangeText={setNewContactEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
         <TouchableOpacity 
-          style={styles.approveButton}
-          onPress={() => 
-            handleApproveRequest(item.id)}
+          style={[styles.addButton, loading && styles.buttonDisabled]}
+          onPress={handleAddContact}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Accept</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.rejectButton}
-          onPress={() => handleRejectRequest(item.id)}
-        >
-          <Text style={styles.buttonText}>Reject</Text>
+          <Text style={styles.addButtonText}>
+            {loading ? 'Sending...' : 'Add'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-
+  const ListEmptyComponent = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyText}>
+        No contacts yet. Add someone by entering their email above.
+      </Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -239,8 +342,8 @@ const handleRemoveContact = (contactItem) => {
       />
       <View style={styles.header}>
         <TouchableOpacity 
-        style={styles.backButton} 
-        onPress={() => navigation.goBack()}
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="chevron-back-outline" size={20} color={theme.colors.primary} style={{marginRight: 4}} />
           <Text style={styles.backButtonText}>Back</Text>
@@ -248,75 +351,24 @@ const handleRemoveContact = (contactItem) => {
         <Text style={styles.title}>Contacts</Text>
       </View>
 
-      <View style={styles.addContactSection}>
-        <Text style={styles.sectionTitle}>Add New Contact</Text>
-        <View style={styles.addContactRow}>
-          <TextInput
-            style={styles.emailInput}
-            placeholder="Enter email address"
-            value={newContactEmail}
-            onChangeText={setNewContactEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-          <TouchableOpacity 
-            style={[styles.addButton, loading && styles.buttonDisabled]}
-            onPress={handleAddContact}
-            disabled={loading}
-          >
-            <Text style={styles.addButtonText}>
-              {loading ? 'Adding...' : 'Add'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {pendingRequests.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Pending Requests ({pendingRequests.length})
-          </Text>
-          <FlatList
-            data={pendingRequests}
-            renderItem={renderPendingRequest}
-            keyExtractor={(item) => item.id.toString()}
-            showsVerticalScrollIndicator={false}
-          />
-        </View>
-      )}
-      
-      {outgoingPendingRequests.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pending Invitations</Text>
-          {outgoingPendingRequests.map((item) => (
-            <View key={item.id}>
-              {renderOutgoingPendingRequest({ item })}
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          My Contacts ({contacts.length})
-        </Text>
-        <FlatList
-          data={contacts}
-          renderItem={renderContact}
-          keyExtractor={(item) => item.id.toString()}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>No contacts yet</Text>
-          }
-        />
-      </View>
+      <SectionList
+        sections={sections}
+        keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        ListHeaderComponent={ListHeaderComponent}
+        ListEmptyComponent={ListEmptyComponent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        stickySectionHeadersEnabled={false}
+      />
     </SafeAreaView>
   );
 }
 
+
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -344,46 +396,56 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.headingRegular,
   },
   title: {
-    fontSize: 22,
-    fontFamily: theme.fonts.headingMedium,
+    fontSize: 20,
+    fontFamily: theme.fonts.headingBold,
     color: theme.colors.text,
+    position: 'absolute',
+    left: '50%',
+    transform: [{ translateX: -50 }],
   },
+
   addContactSection: {
-    backgroundColor: theme.colors.surface,
-    marginHorizontal: theme.spacing.xl,
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.xl,
-    ...theme.shadows.medium,
+    padding: theme.spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
   },
+  sectionHeader: {
+    backgroundColor: theme.colors.surface,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+
   sectionTitle: {
     fontSize: 18,
     fontFamily: theme.fonts.headingMedium,
-    marginBottom: theme.spacing.lg,
     color: theme.colors.text,
   },
   addContactRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.md,
+    marginTop: theme.spacing.md,
   },
   emailInput: {
     flex: 1,
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.md,
-    fontSize: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    borderRadius: theme.borderRadius.medium,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: 16,
     fontFamily: theme.fonts.body,
+    backgroundColor: theme.colors.surface,
   },
   addButton: {
     backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.small,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.xl,
-    ...theme.shadows.small,
+    borderRadius: theme.borderRadius.medium,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    justifyContent: 'center',
   },
   addButtonText: {
     color: '#FFFFFF',
@@ -404,47 +466,75 @@ const styles = StyleSheet.create({
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',  // ADD THIS LINE
+    justifyContent: 'space-between',  
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    minHeight: 60,
   },
+
   pendingItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+    backgroundColor: theme.colors.background,
     gap: theme.spacing.lg,
   },
-
   outgoingPendingItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.small,
-    marginBottom: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-  },
+    minHeight: 60,
+    backgroundColor: '#f8f9fa',
+  }, 
   
   contactInfo: {
     flex: 1,
+    marginRight: theme.spacing.md,
+    minWidth: 0, 
   },
   contactName: {
     fontSize: 16,
     fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
+    flexWrap: 'wrap',
+    numberOfLines: 2,
   },
   contactEmail: {
     fontSize: 14,
     fontFamily: theme.fonts.body,
     color: theme.colors.textSecondary,
     marginTop: 2,
+    flexWrap: 'wrap',
+    numberOfLines: 2,
+  },
+
+  pendingStatus: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body,
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+
+  statusText: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body,
+    color: theme.colors.textSecondary,
   },
   removeButton: {
     padding: theme.spacing.sm,
@@ -475,6 +565,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: theme.fonts.headingMedium,
+  },
+    emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xl,
   },
   emptyText: {
     textAlign: 'center',
