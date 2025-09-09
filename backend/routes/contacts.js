@@ -38,11 +38,17 @@ router.get('/', authenticateToken, (req, res) => {
 router.post('/request', authenticateToken, async (req, res) => {
   const { email } = req.body;
 
+  console.log('🚀 === CONTACT REQUEST STARTED ===');
+  console.log('📧 Recipient email:', email);
+  console.log('👤 Requester:', req.user.email);
+
   if (!email) {
+    console.log('❌ No email provided');
     return res.status(400).json({ error: 'Email is required' });
   }
 
   if (email === req.user.email) {
+    console.log('❌ User trying to add themselves');
     return res.status(400).json({ error: 'Cannot add yourself as a contact' });
   }
 
@@ -57,6 +63,7 @@ try {
 
 
     if (existingContact.exists) {
+      console.log('❌ Contact already exists or pending');
       return res.status(400).json({ 
         error: existingContact.isPending 
           ? 'A contact request is already pending for this email' 
@@ -65,6 +72,7 @@ try {
     }
 
     // Get the current user's info to include their name in the email
+    console.log('🔍 Step 2: Getting current user info...');
     const currentUser = await new Promise((resolve, reject) => {
       getUserByEmail(req.user.email, (err, user) => {
         if (err) reject(err);
@@ -73,19 +81,26 @@ try {
     });
 
     if (!currentUser) {
+      console.log('❌ Current user not found');
       return res.status(404).json({ error: 'Current user not found' });
     }
 
     // Create the contact request
+    console.log('🔍 Step 3: Creating contact request in database...');
     createContactRequest(req.user.email, email, async (err, result) => {
       if (err) {
+        console.log('❌ Error creating contact request:', err);
         if (err.message.includes('duplicate') || err.message.includes('already')) {
           return res.status(400).json({ error: 'A contact request for this email already exists' });
         }
         return res.status(500).json({ error: 'Failed to send contact request' });
       }
+      console.log('✅ Contact request created successfully');
+      console.log('📊 Database result:', result);
+      console.log(`🎯 recipientExists: ${result.recipientExists}`);
 
       if (result.recipientExists) {
+        console.log('📨 Recipient exists - sending in-app notification only');
         res.json({ 
           message: 'Contact request sent successfully',
           type: 'notification',
@@ -93,6 +108,12 @@ try {
         });
       } else {
         // Send invitation email to non-existing user
+
+        console.log('📧 Recipient DOES NOT exist - sending invitation email...');
+        console.log('📧 Email details:');
+        console.log(`   From: ${currentUser.name} (${currentUser.email})`);
+        console.log(`   To: ${email}`);
+
         try {
           await sendInvitationEmail(
             currentUser.name,
@@ -108,6 +129,7 @@ try {
             result 
           });
         } catch (emailError) {
+          console.log('💥 EMAIL SEND FAILED!');
           console.error('❌ Failed to send invitation email:', emailError);
           
           // Still return success for the contact request creation, but note email failed

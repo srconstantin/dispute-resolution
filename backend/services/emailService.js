@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const createTransporter = () => {
   // Option 1: Gmail (requires app password)
   if (process.env.EMAIL_PROVIDER === 'gmail') {
+    console.log('📧 Using Gmail provider');
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
