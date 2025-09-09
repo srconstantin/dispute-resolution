@@ -51,7 +51,7 @@ export default function ContactsScreen({ navigation, token }) {
     }
   };
 
-  const handleAddContact = async () => {
+  const handleAddContact = React.useCallback(async () => {
     if (!newContactEmail.trim()) {
       showError('Please enter an email address')
       return;
@@ -84,7 +84,15 @@ export default function ContactsScreen({ navigation, token }) {
       showError('You already have a pending contact request for this email');
       return;
     }
+    // Check if there's already an outgoing pending request for this email
+    const outgoingRequest = outgoingPendingRequests.find(
+      request => request.recipient_email.toLowerCase() === normalizedEmail
+    );
 
+    if (outgoingRequest) {
+      showError('You already sent a contact request to this email');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -97,7 +105,7 @@ export default function ContactsScreen({ navigation, token }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [newContactEmail, contacts, pendingRequests, outgoingPendingRequests, token, showError, showSuccess, loadContacts]);
 
   const handleApproveRequest = async (requestId) => {
     try {
@@ -325,7 +333,7 @@ const handleRemoveContact = (contactItem) => {
     </View>
   );
 
-  const ListHeaderComponent = () => (
+  const ListHeaderComponent = React.useCallback(() => (
     <View style={styles.addContactSection}>
       <Text style={styles.sectionTitle}>Add New Contact</Text>
       <View style={styles.addContactRow}>
@@ -348,7 +356,7 @@ const handleRemoveContact = (contactItem) => {
         </TouchableOpacity>
       </View>
     </View>
-  );
+  ), [newContactEmail, loading, handleAddContact]);
 
   const ListEmptyComponent = () => (
     <View style={styles.emptyContainer}>
@@ -580,22 +588,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     alignItems: 'flex-end',
     gap: theme.spacing.sm,
-  },
-  cancelButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: theme.borderRadius.small,
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.background,
-  },
-  cancelButtonText: {
-    fontSize: 12,
-    fontFamily: theme.fonts.body,
-    color: theme.colors.error,
   },
    removeButton: {
     padding: theme.spacing.sm,
