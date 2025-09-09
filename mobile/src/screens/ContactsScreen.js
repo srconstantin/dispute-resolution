@@ -389,7 +389,6 @@ export default function ContactsScreen({ navigation, token }) {
         keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
         renderItem={renderItem}
         renderSectionHeader={renderSectionHeader}
-        ListHeaderComponent={ListHeaderComponent}
         ListEmptyComponent={ListEmptyComponent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
