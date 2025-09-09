@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SectionList,
-  FlatList,
   TextInput,
   Alert,
   SafeAreaView,
@@ -215,32 +214,6 @@ const handleRemoveContact = (contactItem) => {
     }
   };
 
-
-
-
-  const renderContact = ({ item }) => (
-    <View style={styles.contactItem}>
-      <View style={styles.contactInfo}>
-        <Text style={styles.contactName}>{item.contact_name}</Text>
-        <Text style={styles.contactEmail}>{item.contact_email}</Text>
-      </View>
-      <TouchableOpacity 
-        style={styles.removeButton}
-        onPress={() => {
-          console.log('🔥 BUTTON PRESSED!', item.contact_name);
-          try {
-            handleRemoveContact(item);
-          } catch (error) {
-            console.error('🔥 Error calling handleRemoveContact:', error);
-          }       
-        }}
-      >
-        <Ionicons name="trash-outline" size={20} color={theme.colors.error} />
-      </TouchableOpacity>
-    </View>
-  );
-
-
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     loadContacts().finally(() => setRefreshing(false));
@@ -249,7 +222,7 @@ const handleRemoveContact = (contactItem) => {
   // Prepare sections data
   const sections = [];
 
- if (pendingRequests.length > 0) {
+  if (pendingRequests.length > 0) {
     sections.push({
       title: `Contact Requests (${pendingRequests.length})`,
       data: pendingRequests,
@@ -272,6 +245,8 @@ const handleRemoveContact = (contactItem) => {
       type: 'contacts'
     });
   }
+
+  
 
   const renderItem = ({ item, section }) => {
     switch (section.type) {
@@ -506,14 +481,7 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     backgroundColor: theme.colors.textLight,
   },
-  section: {
-    backgroundColor: theme.colors.surface,
-    marginHorizontal: theme.spacing.xl,
-    marginBottom: theme.spacing.lg,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.xl,
-    ...theme.shadows.medium,
-  },
+
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,7 +536,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     numberOfLines: 2,
   },
-
+  
   pendingStatus: {
     fontSize: 12,
     fontFamily: theme.fonts.body,
@@ -587,14 +555,56 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.body,
     color: theme.colors.textSecondary,
   },
-  removeButton: {
+  outgoingButtonContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.small,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.background,
+  },
+  cancelButtonText: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body,
+    color: theme.colors.error,
+  },
+  outgoingButtonContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: theme.borderRadius.small,
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    backgroundColor: theme.colors.background,
+  },
+  cancelButtonText: {
+    fontSize: 12,
+    fontFamily: theme.fonts.body,
+    color: theme.colors.error,
+  },
+   removeButton: {
     padding: theme.spacing.sm,
     borderRadius: theme.borderRadius.small,
     backgroundColor: theme.colors.surface,
     borderWidth: 1,
     borderColor: theme.colors.error,
   },
-  
+
   buttonContainer: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
