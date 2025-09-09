@@ -307,12 +307,21 @@ const handleRemoveContact = (contactItem) => {
               <Text style={styles.contactEmail}>{item.recipient_email}</Text>
               <Text style={styles.pendingStatus}>Pending response...</Text>
             </View>
+          <View style={styles.outgoingButtonContainer}>
             <View style={styles.statusContainer}>
               <Ionicons name="time-outline" size={16} color={theme.colors.textSecondary} />
               <Text style={styles.statusText}>Sent</Text>
             </View>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => handleCancelPendingRequest(item)}
+            >
+              <Ionicons name="close-outline" size={16} color={theme.colors.error} />
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
-        );
+        </View>
+      );
 
       case 'contacts':
         return (
