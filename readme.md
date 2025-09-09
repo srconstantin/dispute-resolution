@@ -58,6 +58,10 @@ Go to https://fairenough.netlify.app/ to use the app
 --saves login and current page state (so reloads don't logout or redirect the user)
 
 ## TODO
+--fix verdict generation
+
+--display pending invitations
+
 --experiment with different user inputs & evaluate LLM "verdicts"
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
