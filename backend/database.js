@@ -701,13 +701,17 @@ const deleteContact = async (contactId, userEmail, callback) => {
       return callback(new Error('User not found'), null);
     }
 
-    // Delete the contact where the user is either the requester or recipient
-    // and the contact status is 'accepted'
+   // Delete either:
+    // 1. Accepted contacts where the user is either the requester or recipient, OR
+    // 2. Pending requests where the user is the requester (allowing users to cancel their own pending requests)
     const result = await pool.query(`
       DELETE FROM contacts 
       WHERE id = $1 
-        AND (requester_id = $2 OR recipient_id = $2) 
-        AND status = 'accepted'
+        AND (
+          (requester_id = $2 OR recipient_id = $2) AND status = 'accepted'
+          OR 
+          requester_id = $2 AND status = 'pending'
+        )
     `, [contactId, user.id]);
     
     callback(null, { 

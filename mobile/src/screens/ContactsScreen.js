@@ -9,7 +9,8 @@ import {
   TextInput,
   Alert,
   SafeAreaView,
-  RefreshControl
+  RefreshControl,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getContacts, sendContactRequest, approveContactRequest, rejectContactRequest, removeContact } from '../services/api';
@@ -174,11 +175,46 @@ const handleRemoveContact = (contactItem) => {
   }
 };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadContacts();
-    setRefreshing(false);
+  const handleCancelPendingRequest = async (pendingRequest) => {
+    const performCancel = async () => {
+      try {
+        await removeContact(pendingRequest.id, token);
+        showSuccess('Contact request cancelled');
+        loadContacts();
+      } catch (error) {
+        showError('Failed to cancel contact request');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      // Use browser confirm dialog for web
+      const confirmed = window.confirm(
+        `Are you sure you want to cancel the contact request to ${pendingRequest.recipient_name}?`
+      );
+      
+      if (confirmed) {
+        performCancel();
+      }
+    } else {
+      // Use React Native Alert for mobile
+      Alert.alert(
+        'Cancel Request',
+        `Are you sure you want to cancel the contact request to ${pendingRequest.recipient_name}?`,
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+          {
+            text: 'Delete Request',
+            style: 'destructive',
+            onPress: performCancel,
+          },
+        ]
+      );
+    }
   };
+
 
 
 
@@ -203,6 +239,12 @@ const handleRemoveContact = (contactItem) => {
       </TouchableOpacity>
     </View>
   );
+
+
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    loadContacts().finally(() => setRefreshing(false));
+  }, []);
 
   // Prepare sections data
   const sections = [];
