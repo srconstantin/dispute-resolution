@@ -59,8 +59,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---display pending invitations
-
 --maybe: allow multiple iterations of discussion before asking for a verdict
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
