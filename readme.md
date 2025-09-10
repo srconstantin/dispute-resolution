@@ -2,7 +2,9 @@
 
 This is an LLM-powered dispute resolution app. Think of it as a tool for interpersonal problem solving, or "AITA"-style moral reasoning.  The idea is that the bot can serve as a good-enough "trusted arbiter." Hopefully, parties to a dispute can agree to abide by, or at least give some credence to, the bot's judgment, after it's "heard" everyone's side of the story. 
 
-Structurally, a "dispute" has two or more participants, each of whom submits text (representing their side of the story.) Dispute participants can only see their own text. When all participants have submitted text, an LLM will use the text to generate a "verdict" (an assessment of who, if anyone, is in the right or in the wrong, and what should be done about the problem now.) All participants will see the verdict, and the dispute will be marked complete. 
+Structurally, a "dispute" has two or more participants, each of whom submits a response (representing their side of the story.) Dispute participants can see their own response and other participants' responses. When all participants have submitted responses, an LLM will use the responses to generate a "verdict" (an assessment of who, if anyone, is in the right or in the wrong, and what should be done about the problem now.) All participants will see the verdict. 
+
+Then, each participant will have the option to either declare they're satisfied with the verdict, or opt to continue the discussion and enter a response in the next round. After a round is complete (with all participants either satisfied or adding additional context/corrections/updates/rebuttals) a new verdict is generated, incorporating all the discussion up to the present. The process continues until everyone is satisfied with the verdict, and the dispute is marked concluded.
 
 Warning: Please be careful about putting private information on the app. 
 The database is encrypted but I do store the encryption keys as environment variables; i.e. *in principle* I would be able to access your username, email address, and dispute contents. I have no intention of doing this. But just to be safe, please don't input any real personal information that you'd be uncomfortable with a stranger seeing. 
@@ -59,7 +61,7 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---maybe: allow multiple iterations of discussion before asking for a verdict
+ allow multiple iterations of discussion before asking for a verdict
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
 
