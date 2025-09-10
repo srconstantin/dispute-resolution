@@ -342,7 +342,7 @@ router.put('/:id/response', authenticateToken, (req, res) => {
     return res.status(400).json({ error: 'Response text is required' });
   }
   
-  submitDisputeResponse(dispute_id, req.user.userId, response_text.trim(), (err, result) => {
+  submitDisputeResponse(dispute_id, req.user.userId, response_text.trim(), async (err, result) => {
     if (err) {
       console.error('Error submitting response:', err);
       if (err.message === 'Participant not found or not accepted') {
@@ -422,7 +422,7 @@ router.post('/:id/satisfaction', authenticateToken, (req, res) => {
     req.user.userId, 
     is_satisfied, 
     additional_response?.trim() || null,
-    (err, result) => {
+    async (err, result) => {
       if (err) {
         console.error('Error submitting satisfaction response:', err);
         if (err.message === 'Dispute not found') {
