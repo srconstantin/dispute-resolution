@@ -55,13 +55,19 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --uses participant text in a call to the Claude API to get a verdict on who's in the right/wrong and what should be done to resolve the dispute; saves the verdict to the database; and shows the users the verdict
 
+--allows multiple rounds of disputes and verdicts
+
 --shows error and success messages to users
 
 --saves login and current page state (so reloads don't logout or redirect the user)
 
 ## TODO
 
- allow multiple iterations of discussion before asking for a verdict
+--fix formatting on DisputeDetail page
+
+--show correct dispute status on Disputes stage
+
+--make color coding consistent and fix palette
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
 
