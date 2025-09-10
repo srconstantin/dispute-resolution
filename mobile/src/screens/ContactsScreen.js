@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontFamily: theme.fonts.headingBold,
+    fontFamily: theme.fonts.heading,
     color: theme.colors.text,
     position: 'absolute',
     left: '50%',
