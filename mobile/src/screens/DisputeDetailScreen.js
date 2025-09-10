@@ -887,30 +887,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  errorText: {
+    fontSize: 16,
+    color: theme.colors.error,
+    fontFamily: theme.fonts.body,
+  },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: theme.colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  backButton: {
+    marginRight: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.headingRegular,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+  },
+  disputeHeader: {
     marginBottom: 24,
   },
   disputeTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
+    fontFamily: theme.fonts.heading,
     color: theme.colors.text,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
     marginBottom: 12,
   },
@@ -925,6 +962,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   participantRow: {
     flexDirection: 'row',
@@ -937,30 +975,33 @@ const styles = StyleSheet.create({
   participantName: {
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.headingRegular,
     flex: 1,
   },
   participantStatus: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: theme.fonts.headingMedium,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
   acceptedStatus: {
-    color: theme.colors.success,
-    backgroundColor: theme.colors.successBackground,
+    color: '#1B7B3A', // Darker, muted green
+    backgroundColor: '#E8F5E8', // Light green background
   },
   rejectedStatus: {
-    color: theme.colors.error,
-    backgroundColor: theme.colors.errorBackground,
+    color: '#B91C1C', // Darker, muted red
+    backgroundColor: '#FEF2F2', // Light red background
   },
   invitedStatus: {
-    color: theme.colors.warning,
-    backgroundColor: theme.colors.warningBackground,
+    color: '#D97706', // Darker, muted orange
+    backgroundColor: '#FEF3C7', // Light orange background
   },
   responsePrompt: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -971,12 +1012,14 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.body,
     backgroundColor: theme.colors.surface,
     minHeight: 120,
   },
   characterCount: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
     textAlign: 'right',
     marginTop: 4,
     marginBottom: 12,
@@ -991,6 +1034,7 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -1008,35 +1052,44 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
+    color: '#FFFFFF',
   },
   acceptButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: '#16A34A', // More muted green
   },
   rejectButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: '#DC2626', // More muted red
   },
   satisfiedButton: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: '#16A34A', // More muted green
   },
   notSatisfiedButton: {
-    backgroundColor: theme.colors.warning,
+    backgroundColor: '#EA580C', // More muted orange
   },
   inviteButton: {
     backgroundColor: theme.colors.primary,
   },
   deleteButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: '#DC2626', // Muted red
   },
   leaveButton: {
-    backgroundColor: theme.colors.warning,
+    backgroundColor: '#EA580C', // Muted orange
   },
   satisfactionQuestion: {
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.headingRegular,
     marginBottom: 16,
     fontWeight: '500',
   },
   additionalResponseContainer: {
+    marginBottom: 16,
+  },
+  invitationText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    fontFamily: theme.fonts.body,
     marginBottom: 16,
   },
   timelineItem: {
@@ -1085,6 +1138,7 @@ const styles = StyleSheet.create({
   responseText: {
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.body,
     lineHeight: 22,
   },
   editButton: {
@@ -1099,13 +1153,15 @@ const styles = StyleSheet.create({
     color: theme.colors.surface,
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
   verdictContainer: {
     marginBottom: 8,
   },
   verdictTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
     marginBottom: 8,
   },
@@ -1120,16 +1176,13 @@ const styles = StyleSheet.create({
   roundLabel: {
     fontSize: 12,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
     marginBottom: 4,
   },
   timestamp: {
     fontSize: 12,
     color: theme.colors.textSecondary,
-  },
-  invitationText: {
-    fontSize: 16,
-    color: theme.colors.text,
-    marginBottom: 16,
+    fontFamily: theme.fonts.body,
   },
   modalContainer: {
     flex: 1,
@@ -1146,20 +1199,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
   },
   cancelButton: {
     fontSize: 16,
     color: theme.colors.error,
+    fontFamily: theme.fonts.headingRegular,
   },
   saveButton: {
     fontSize: 16,
     color: theme.colors.primary,
+    fontFamily: theme.fonts.headingMedium,
     fontWeight: '600',
   },
   sendButton: {
     fontSize: 16,
     color: theme.colors.primary,
+    fontFamily: theme.fonts.headingMedium,
     fontWeight: '600',
   },
   modalContent: {
@@ -1169,11 +1226,13 @@ const styles = StyleSheet.create({
   modalPrompt: {
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.body,
     marginBottom: 12,
   },
   modalSubtitle: {
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.headingRegular,
     marginBottom: 16,
   },
   modalTextInput: {
@@ -1184,6 +1243,7 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
     color: theme.colors.text,
+    fontFamily: theme.fonts.body,
     backgroundColor: theme.colors.surface,
   },
   contactItem: {
@@ -1203,11 +1263,13 @@ const styles = StyleSheet.create({
   contactName: {
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
   },
   contactEmail: {
     fontSize: 14,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
   },
   checkbox: {
     width: 24,
@@ -1230,6 +1292,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
     textAlign: 'center',
   },
 });
