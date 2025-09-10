@@ -1,6 +1,6 @@
 const { Pool } = require('pg');
 const encryption = require('./utils/encryption');
-
+const { generateVerdict } = require('./services/claude');
 
 // Railway automatically provides DATABASE_URL
 const pool = new Pool({
@@ -152,7 +152,7 @@ const createDispute = async (disputeData, callback) => {
     // Create dispute
     const disputeResult = await client.query(
       'INSERT INTO disputes(title_encrypted, creator_id, status) VALUES ($1, $2, $3) RETURNING id',
-      [titleEncrypted, creator_id, 'ongoing']
+      [titleEncrypted, creator_id, 'incomplete']
     );
     const dispute_id = disputeResult.rows[0].id;
 
@@ -173,7 +173,7 @@ const createDispute = async (disputeData, callback) => {
     }
 
     await client.query('COMMIT');
-    callback(null, {id: dispute_id, title, creator_id, status: 'ongoing'});
+    callback(null, {id: dispute_id, title, creator_id, status: 'incomplete'});
   } catch (err) {
     await client.query('ROLLBACK');
     callback(err, null);
@@ -306,6 +306,7 @@ const getDisputeById = async (dispute_id, callback) => {
         d.title_encrypted,
         d.creator_id,
         d.status,
+        d.current_round,
         d.verdict_encrypted,
         d.created_at,
         u.name_encrypted as creator_name_encrypted,
@@ -347,7 +348,98 @@ const getDisputeById = async (dispute_id, callback) => {
       WHERE dp.dispute_id = $1 
       ORDER BY dp.created_at ASC
     `, [dispute_id]);
-    
+
+
+        // Check if we have new tables for multi-round data
+    let hasMultiRoundTables = false;
+    try {
+      await pool.query('SELECT 1 FROM dispute_responses LIMIT 1');
+      hasMultiRoundTables = true;
+    } catch (e) {
+      // Tables don't exist yet, use old structure
+    }
+   if (hasMultiRoundTables) {
+      // Get all responses across all rounds from new table
+      const responsesResult = await pool.query(`
+        SELECT
+          dr.user_id,
+          dr.round_number,
+          dr.response_text_encrypted,
+          dr.submitted_at,
+          u.name_encrypted
+        FROM dispute_responses dr
+        JOIN users u ON dr.user_id = u.id
+        WHERE dr.dispute_id = $1
+        ORDER BY dr.round_number ASC, dr.submitted_at ASC
+      `, [dispute_id]);
+
+      // Get all verdicts across all rounds
+      const verdictsResult = await pool.query(`
+        SELECT
+          dv.round_number,
+          dv.verdict_encrypted,
+          dv.generated_at
+        FROM dispute_verdicts dv
+        WHERE dv.dispute_id = $1
+        ORDER BY dv.round_number ASC
+      `, [dispute_id]);
+
+      // Get participant satisfaction for current round
+      const satisfactionResult = await pool.query(`
+        SELECT
+          ps.user_id,
+          ps.round_number,
+          ps.is_satisfied,
+          ps.responded_at
+        FROM participant_satisfaction ps
+        WHERE ps.dispute_id = $1 AND ps.round_number = $2
+      `, [dispute_id, dispute.current_round]);
+
+      // Organize responses by round
+      const responsesByRound = {};
+      responsesResult.rows.forEach(row => {
+        if (!responsesByRound[row.round_number]) {
+          responsesByRound[row.round_number] = [];
+        }
+        responsesByRound[row.round_number].push({
+          user_id: row.user_id,
+          name: encryption.decrypt(row.name_encrypted),
+          response_text: encryption.decrypt(row.response_text_encrypted),
+          submitted_at: row.submitted_at
+        });
+      });
+      decryptedDispute.responses_by_round = responsesByRound;
+
+      // Decrypt verdicts
+      decryptedDispute.verdicts = verdictsResult.rows.map(row => ({
+        round_number: row.round_number,
+        verdict: encryption.decrypt(row.verdict_encrypted),
+        generated_at: row.generated_at
+      }));
+
+    // Add satisfaction data
+      decryptedDispute.satisfaction = satisfactionResult.rows.map(row => ({
+        user_id: row.user_id,
+        round_number: row.round_number,
+        is_satisfied: row.is_satisfied,
+        responded_at: row.responded_at
+      }));
+    } else {
+      // Use existing structure for backward compatibility
+      decryptedDispute.responses_by_round = {};
+      decryptedDispute.verdicts = [];
+      decryptedDispute.satisfaction = [];
+      
+      // Convert old verdict to new format
+      if (dispute.verdict_encrypted) {
+        decryptedDispute.verdicts = [{
+          round_number: 1,
+          verdict: encryption.decrypt(dispute.verdict_encrypted),
+          generated_at: dispute.updated_at
+        }];
+      }
+    }
+
     // Decrypt participant data
     decryptedDispute.participants = participantsResult.rows.map(row => ({
       user_id: row.user_id,
@@ -359,11 +451,19 @@ const getDisputeById = async (dispute_id, callback) => {
       email: encryption.decrypt(row.email_encrypted)
     }));
 
+   // For backward compatibility, also add old verdict field
+    decryptedDispute.verdict = decryptedDispute.verdicts.length > 0 ? 
+      decryptedDispute.verdicts[decryptedDispute.verdicts.length - 1].verdict : null;
+
+
     callback(null, decryptedDispute);
   } catch (err) {
     callback(err, null);
   }
 };
+
+
+
 
 const updateParticipantStatus = async (dispute_id, user_id, status, callback) => {
   const client = await pool.connect();
@@ -425,7 +525,7 @@ const leaveDispute = async (dispute_id, user_id, callback) => {
     }
     
     // Don't allow leaving if the dispute is already completed or resolved
-    if (participant.dispute_status === 'completed' || participant.dispute_status === 'resolved') {
+    if (participant.dispute_status === 'concluded') {
       throw new Error('Cannot leave a completed dispute');
     }
     
@@ -471,54 +571,354 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
   try {
     await client.query('BEGIN');
 
-    // Encrypt the response text before storing
-    const responseTextEncrypted = encryption.encryptText(response_text);
-    
-    // Update participant response
-    const result = await client.query(`
-      UPDATE dispute_participants 
-      SET response_text_encrypted = $1, response_submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-      WHERE dispute_id = $2 AND user_id = $3 AND status = 'accepted'
-    `, [responseTextEncrypted, dispute_id, user_id]);
-    
-    if (result.rowCount === 0) {
+    // Check if user is accepted participant and get current round
+    const participantCheck = await client.query(`
+      SELECT dp.status, d.status as dispute_status, d.current_round
+      FROM dispute_participants dp
+      JOIN disputes d ON dp.dispute_id = d.id
+      WHERE dp.dispute_id = $1 AND dp.user_id = $2
+    `, [dispute_id, user_id]);
+
+    if (participantCheck.rows.length === 0 || participantCheck.rows[0].status !== 'accepted') {
       throw new Error('Participant not found or not accepted');
     }
+
+    const disputeStatus = participantCheck.rows[0].dispute_status;
+    const currentRound = participantCheck.rows[0].current_round || 1;
+
+    if (disputeStatus === 'concluded' || disputeStatus === 'cancelled' || disputeStatus === 'rejected') {
+      throw new Error('Cannot submit response to completed dispute');
+    }
+
+    // Encrypt response text
+    const responseTextEncrypted = encryption.encryptText(response_text);
     
-    // Check if all accepted participants have submitted responses
-    const checkResult = await client.query(`
-      SELECT 
-        COUNT(*) as total_participants,
-        SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected_count,
-        SUM(CASE WHEN status = 'accepted' AND response_text_encrypted IS NOT NULL THEN 1 ELSE 0 END) as responded_count,
-        SUM(CASE WHEN status = 'accepted' AND response_text_encrypted IS NULL THEN 1 ELSE 0 END) as accepted_not_responded,
-        SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as still_invited
-      FROM dispute_participants 
-      WHERE dispute_id = $1
-    `, [dispute_id]);
-    
-    const checkData = checkResult.rows[0];
-    const allInvitationsResolved = parseInt(checkData.still_invited) === 0;
-    const allAcceptedHaveResponded = parseInt(checkData.accepted_not_responded) === 0;
-    
-    if (allInvitationsResolved && allAcceptedHaveResponded && parseInt(checkData.responded_count) > 0) {
+    // Check if we have new tables
+    let hasMultiRoundTables = false;
+    try {
+      await client.query('SELECT 1 FROM dispute_responses LIMIT 1');
+      hasMultiRoundTables = true;
+    } catch (e) {
+      // Tables don't exist yet
+    }
+
+    if (hasMultiRoundTables) {
+      // Insert or update response for current round in new table
       await client.query(`
-        UPDATE disputes 
-        SET status = 'completed', updated_at = CURRENT_TIMESTAMP 
-        WHERE id = $1
+        INSERT INTO dispute_responses (dispute_id, user_id, round_number, response_text_encrypted, submitted_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (dispute_id, user_id, round_number)
+        DO UPDATE SET 
+          response_text_encrypted = EXCLUDED.response_text_encrypted,
+          submitted_at = CURRENT_TIMESTAMP
+      `, [dispute_id, user_id, currentRound, responseTextEncrypted]);
+
+     // Check if all accepted participants have submitted responses for current round
+      const completionCheck = await client.query(`
+        SELECT 
+          COUNT(*) as total_accepted,
+          COUNT(dr.user_id) as responses_submitted
+        FROM dispute_participants dp
+        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
+        WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
+      `, [dispute_id, currentRound]);
+
+      const totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
+      const responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
+      const roundCompleted = totalAccepted === responsesSubmitted && totalAccepted > 0;
+
+      // If round is complete and dispute is incomplete, mark as evaluated and generate verdict
+      if (roundCompleted && disputeStatus === 'incomplete') {
+        await client.query(`
+          UPDATE disputes 
+          SET status = 'evaluated', updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `, [dispute_id]);
+      }
+    } else {
+      // Use existing structure for backward compatibility
+      await client.query(`
+        UPDATE dispute_participants 
+        SET response_text_encrypted = $1, response_submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE dispute_id = $2 AND user_id = $3 AND status = 'accepted'
+      `, [responseTextEncrypted, dispute_id, user_id]);
+
+      // Check completion using old logic
+      const checkResult = await client.query(`
+        SELECT 
+          COUNT(*) as total_participants,
+          SUM(CASE WHEN status = 'accepted' AND response_text_encrypted IS NOT NULL THEN 1 ELSE 0 END) as responded_count,
+          SUM(CASE WHEN status = 'accepted' AND response_text_encrypted IS NULL THEN 1 ELSE 0 END) as accepted_not_responded,
+          SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as still_invited
+        FROM dispute_participants 
+        WHERE dispute_id = $1
       `, [dispute_id]);
       
-      await client.query('COMMIT');
-      callback(null, { dispute_id, user_id, response_text, completed: true });
-    } else {
-      await client.query('COMMIT');
-      callback(null, { dispute_id, user_id, response_text, completed: false });
+      const checkData = checkResult.rows[0];
+      const allInvitationsResolved = parseInt(checkData.still_invited) === 0;
+      const allAcceptedHaveResponded = parseInt(checkData.accepted_not_responded) === 0;
+      const roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && parseInt(checkData.responded_count) > 0;
+      
+      if (roundCompleted && disputeStatus === 'incomplete') {
+        await client.query(`
+          UPDATE disputes 
+          SET status = 'evaluated', updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `, [dispute_id]);
+      }
     }
+
+    await client.query('COMMIT');
+    
+    callback(null, {
+      dispute_id,
+      user_id,
+      round_completed: hasMultiRoundTables ? (totalAccepted === responsesSubmitted && totalAccepted > 0) : roundCompleted,
+      current_round: currentRound,
+      status: (hasMultiRoundTables ? 
+        (totalAccepted === responsesSubmitted && totalAccepted > 0 && disputeStatus === 'incomplete' ? 'evaluated' : disputeStatus) :
+        (roundCompleted && disputeStatus === 'incomplete' ? 'evaluated' : disputeStatus))
+    });
+
+    // If round completed, generate verdict asynchronously
+    if ((hasMultiRoundTables ? (totalAccepted === responsesSubmitted && totalAccepted > 0) : roundCompleted) && disputeStatus === 'incomplete') {
+      generateVerdictForRound(dispute_id, currentRound);
+    }
+
   } catch (err) {
     await client.query('ROLLBACK');
     callback(err, null);
   } finally {
     client.release();
+  }
+};
+
+// New function to submit satisfaction response
+const submitSatisfactionResponse = async (dispute_id, user_id, is_satisfied, additional_response, callback) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+
+    // Check if we have new tables
+    let hasMultiRoundTables = false;
+    try {
+      await client.query('SELECT 1 FROM participant_satisfaction LIMIT 1');
+      hasMultiRoundTables = true;
+    } catch (e) {
+      return callback(new Error('Multi-round tables not yet created. Please run migration first.'), null);
+    }
+
+    // Get current round and dispute status
+    const disputeCheck = await client.query(`
+      SELECT d.current_round, d.status
+      FROM disputes d
+      WHERE d.id = $1
+    `, [dispute_id]);
+
+    if (disputeCheck.rows.length === 0) {
+      throw new Error('Dispute not found');
+    }
+
+    const currentRound = disputeCheck.rows[0].current_round || 1;
+    const disputeStatus = disputeCheck.rows[0].status;
+
+    if (disputeStatus !== 'evaluated') {
+      throw new Error('Cannot submit satisfaction response - dispute not in evaluated state');
+    }
+
+    // Record satisfaction response
+    await client.query(`
+      INSERT INTO participant_satisfaction (dispute_id, user_id, round_number, is_satisfied)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (dispute_id, user_id, round_number)
+      DO UPDATE SET 
+        is_satisfied = EXCLUDED.is_satisfied,
+        responded_at = CURRENT_TIMESTAMP
+    `, [dispute_id, user_id, currentRound, is_satisfied]);
+
+    // If not satisfied and provided additional response, add it to next round
+    if (!is_satisfied && additional_response && additional_response.trim()) {
+      const nextRound = currentRound + 1;
+      const responseTextEncrypted = encryption.encryptText(additional_response.trim());
+      
+      await client.query(`
+        INSERT INTO dispute_responses (dispute_id, user_id, round_number, response_text_encrypted, submitted_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (dispute_id, user_id, round_number)
+        DO UPDATE SET 
+          response_text_encrypted = EXCLUDED.response_text_encrypted,
+          submitted_at = CURRENT_TIMESTAMP
+      `, [dispute_id, user_id, nextRound, responseTextEncrypted]);
+    }
+
+
+    // Check if all participants have responded to satisfaction question
+    const satisfactionCheck = await client.query(`
+      SELECT 
+        COUNT(dp.user_id) as total_participants,
+        COUNT(ps.user_id) as satisfaction_responses,
+        COUNT(CASE WHEN ps.is_satisfied = true THEN 1 END) as satisfied_count,
+        COUNT(CASE WHEN ps.is_satisfied = false THEN 1 END) as unsatisfied_count
+      FROM dispute_participants dp
+      LEFT JOIN participant_satisfaction ps ON (dp.dispute_id = ps.dispute_id AND dp.user_id = ps.user_id AND ps.round_number = $2)
+      WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
+    `, [dispute_id, currentRound]);
+
+    const totalParticipants = parseInt(satisfactionCheck.rows[0].total_participants);
+    const satisfactionResponses = parseInt(satisfactionCheck.rows[0].satisfaction_responses);
+    const satisfiedCount = parseInt(satisfactionCheck.rows[0].satisfied_count);
+    const unsatisfiedCount = parseInt(satisfactionCheck.rows[0].unsatisfied_count);
+
+    let newStatus = disputeStatus;
+    let newRound = currentRound;
+
+    // If everyone has responded to satisfaction
+    if (totalParticipants === satisfactionResponses) {
+      if (satisfiedCount === totalParticipants) {
+        // Everyone satisfied - conclude dispute
+        newStatus = 'concluded';
+        await client.query(`
+          UPDATE disputes 
+          SET status = 'concluded', updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `, [dispute_id]);
+      } else if (unsatisfiedCount > 0) {
+        // Some unsatisfied - start new round
+        newRound = currentRound + 1;
+        newStatus = 'incomplete';
+        await client.query(`
+          UPDATE disputes 
+          SET status = 'incomplete', current_round = $2, updated_at = CURRENT_TIMESTAMP 
+          WHERE id = $1
+        `, [dispute_id, newRound]);
+      }
+    }
+
+    await client.query('COMMIT');
+
+    callback(null, {
+      dispute_id,
+      user_id,
+      current_round: newRound,
+      status: newStatus,
+      all_satisfied: satisfiedCount === totalParticipants && totalParticipants === satisfactionResponses
+    });
+
+    // If new round started and all have additional responses, generate new verdict
+    if (newStatus === 'incomplete' && newRound > currentRound) {
+      checkAndGenerateNewRoundVerdict(dispute_id, newRound);
+    }
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    callback(err, null);
+  } finally {
+    client.release();
+  }
+};
+
+// Generate verdict for a specific round
+const generateVerdictForRound = async (dispute_id, round_number) => {
+  try {
+    // Check if we have new tables
+    let hasMultiRoundTables = false;
+    try {
+      await pool.query('SELECT 1 FROM dispute_responses LIMIT 1');
+      hasMultiRoundTables = true;
+    } catch (e) {
+      // Fall back to old verdict generation
+      const { checkAndGenerateVerdict } = require('./database');
+      return checkAndGenerateVerdict(dispute_id, () => {});
+    }
+
+    // Get all responses up to this round
+    const responsesResult = await pool.query(`
+      SELECT 
+        dr.round_number,
+        dr.response_text_encrypted,
+        u.name_encrypted
+      FROM dispute_responses dr
+      JOIN users u ON dr.user_id = u.id
+      WHERE dr.dispute_id = $1 AND dr.round_number <= $2
+      ORDER BY dr.round_number ASC, dr.submitted_at ASC
+    `, [dispute_id, round_number]);
+
+    // Get dispute info
+    const disputeResult = await pool.query(`
+      SELECT d.title_encrypted, u.name_encrypted as creator_name_encrypted
+      FROM disputes d
+      JOIN users u ON d.creator_id = u.id
+      WHERE d.id = $1
+    `, [dispute_id]);
+
+    if (disputeResult.rows.length === 0) {
+      throw new Error('Dispute not found');
+    }
+
+    // Decrypt and format data for Claude
+    const disputeData = {
+      id: dispute_id,
+      title: encryption.decrypt(disputeResult.rows[0].title_encrypted),
+      creator_name: encryption.decrypt(disputeResult.rows[0].creator_name_encrypted),
+      round_number: round_number,
+      all_responses: responsesResult.rows.map(row => ({
+        round: row.round_number,
+        name: encryption.decrypt(row.name_encrypted),
+        response_text: encryption.decrypt(row.response_text_encrypted)
+      }))
+    };
+
+
+    // Generate verdict
+    const verdict = await generateVerdict(disputeData);
+
+    // Save verdict
+    const verdictEncrypted = encryption.encryptText(verdict);
+    await pool.query(`
+      INSERT INTO dispute_verdicts (dispute_id, round_number, verdict_encrypted)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (dispute_id, round_number)
+      DO UPDATE SET 
+        verdict_encrypted = EXCLUDED.verdict_encrypted,
+        generated_at = CURRENT_TIMESTAMP
+    `, [dispute_id, round_number, verdictEncrypted]);
+
+    console.log(`Verdict generated for dispute ${dispute_id}, round ${round_number}`);
+  } catch (error) {
+    console.error(`Error generating verdict for dispute ${dispute_id}, round ${round_number}:`, error);
+  }
+};
+
+// Check if new round is ready for verdict generation
+const checkAndGenerateNewRoundVerdict = async (dispute_id, round_number) => {
+  try {
+    // Check if all participants have submitted responses for this round
+    const checkResult = await pool.query(`
+      SELECT 
+        COUNT(dp.user_id) as total_accepted,
+        COUNT(dr.user_id) as responses_submitted
+      FROM dispute_participants dp
+      LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
+      WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
+    `, [dispute_id, round_number]);
+
+    const totalAccepted = parseInt(checkResult.rows[0].total_accepted);
+    const responsesSubmitted = parseInt(checkResult.rows[0].responses_submitted);
+
+    if (totalAccepted === responsesSubmitted && totalAccepted > 0) {
+      // Update dispute status to evaluated
+      await pool.query(`
+        UPDATE disputes 
+        SET status = 'evaluated', updated_at = CURRENT_TIMESTAMP 
+        WHERE id = $1
+      `, [dispute_id]);
+
+      // Generate verdict
+      generateVerdictForRound(dispute_id, round_number);
+    }
+  } catch (error) {
+    console.error(`Error checking round completion for dispute ${dispute_id}, round ${round_number}:`, error);
   }
 };
 
@@ -538,6 +938,27 @@ const updateDisputeVerdict = async (dispute_id, verdict, callback) => {
     callback(err, null);
   }
 };
+
+// Save a pre-generated verdict for a specific round
+const saveVerdictForRound = async (dispute_id, round_number, verdict) => {
+  try {
+    const verdictEncrypted = encryption.encryptText(verdict);
+    await pool.query(`
+      INSERT INTO dispute_verdicts (dispute_id, round_number, verdict_encrypted)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (dispute_id, round_number)
+      DO UPDATE SET 
+        verdict_encrypted = EXCLUDED.verdict_encrypted,
+        generated_at = CURRENT_TIMESTAMP
+    `, [dispute_id, round_number, verdictEncrypted]);
+
+    console.log(`Verdict saved for dispute ${dispute_id}, round ${round_number}`);
+  } catch (error) {
+    console.error(`Error saving verdict for dispute ${dispute_id}, round ${round_number}:`, error);
+    throw error;
+  }
+};
+
 
 const createContactRequest = async (requesterEmail, recipientEmail, callback) => {
   try {
@@ -771,11 +1192,6 @@ const checkExistingContact = async (userEmail, contactEmail, callback) => {
 };
 
 
-
-
-const { generateVerdict } = require('./services/claude');
-
-
 const checkAndGenerateVerdict = async (disputeId, callback) => {
   try {
     // First, check if all participants have submitted responses
@@ -872,5 +1288,9 @@ module.exports = {
   checkAndGenerateVerdict,
   deleteDispute,
   leaveDispute,
-  addParticipantsToDispute
+  addParticipantsToDispute,
+  submitSatisfactionResponse,
+  generateVerdictForRound,
+  checkAndGenerateNewRoundVerdict,
+  saveVerdictForRound
 };

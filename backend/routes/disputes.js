@@ -11,7 +11,11 @@ const {
   getUserByEmail,
   deleteDispute,
   leaveDispute,
-  addParticipantsToDispute
+  addParticipantsToDispute,
+  submitSatisfactionResponse,
+  generateVerdictForRound,
+  checkAndGenerateNewRoundVerdict,
+  saveVerdictForRound
 } = require('../database');
 
 const router = express.Router();
@@ -244,7 +248,7 @@ router.post('/:id/invite', authenticateToken, (req, res) => {
     }
     
     // Only allow inviting to active disputes
-    if (dispute.status !== 'ongoing') {
+    if (dispute.status !== 'incomplete') {
       return res.status(400).json({ error: 'Cannot invite participants to a completed or cancelled dispute' });
     }
     
@@ -344,58 +348,177 @@ router.put('/:id/response', authenticateToken, (req, res) => {
       if (err.message === 'Participant not found or not accepted') {
         return res.status(403).json({ error: 'You are not an accepted participant in this dispute' });
       }
+      if (err.message === 'Cannot submit response to completed dispute') {
+        return res.status(403).json({ error: 'Cannot submit response to completed dispute' });
+      }
       return res.status(500).json({ error: 'Failed to submit response' });
     }
-    
-    if (result.completed) {
+
+
+    // If round is completed, generate verdict immediately
+    if (result.round_completed && result.status === 'evaluated') {
       try {
-        // Get full dispute data for Claude API
-        getDisputeById(dispute_id, async (err, disputeData) => {
+        console.log('Round completed, generating verdict for dispute:', dispute_id, 'round:', result.current_round);
+        await generateVerdictForRound(dispute_id, result.current_round);
+        
+        // Get the generated verdict to return to user
+        getDisputeById(dispute_id, (err, disputeData) => {
           if (err) {
-            console.error('Error fetching dispute for verdict:', err);
-            return res.status(500).json({ error: 'Failed to generate verdict' });
-          }
-  
-          try {
-            // Generate verdict using Claude API
-            console.log('Generating verdict for dispute:', dispute_id);
-            const verdict = await generateVerdict(disputeData);
-            
-            // Update database with verdict
-            updateDisputeVerdict(dispute_id, verdict, (err, verdictResult) => {
-              if (err) {
-                console.error('Error saving verdict:', err);
-                return res.status(500).json({ error: 'Failed to save verdict' });
-              }
-              
-              console.log('Verdict saved successfully for dispute:', dispute_id);
-              res.json({ 
-                message: 'Response submitted successfully. All participants have responded - dispute is now completed with verdict!',
-                result,
-                verdict: verdict
-              });
-            });
-          } catch (claudeError) {
-            console.error('Error generating verdict:', claudeError);
-            res.json({ 
-              message: 'Response submitted successfully. All participants have responded - dispute is now completed! (Verdict generation failed)',
-              result 
+            console.error('Error fetching updated dispute:', err);
+            return res.json({ 
+              message: 'Response submitted successfully. Verdict generated but failed to fetch.',
+              result
             });
           }
+          
+          const latestVerdict = disputeData.verdicts && disputeData.verdicts.length > 0 ? 
+            disputeData.verdicts.find(v => v.round_number === result.current_round) : null;
+          
+          res.json({ 
+            message: 'Response submitted successfully. All participants have responded - dispute evaluated with verdict!',
+            result,
+            verdict: latestVerdict ? latestVerdict.verdict : null
+          });
         });
       } catch (error) {
-        console.error('Error in verdict generation process:', error);
+        console.error('Error generating verdict:', error);
         res.json({ 
-          message: 'Response submitted successfully. All participants have responded - dispute is now completed!',
+          message: 'Response submitted successfully. All participants have responded but verdict generation failed.',
           result 
         });
       }
     } else {
       res.json({ 
         message: 'Response submitted successfully',
-        result 
+        result
       });
     }
+  });
+});
+
+
+// Add this new route for satisfaction responses
+router.post('/:id/satisfaction', authenticateToken, (req, res) => {
+  const dispute_id = parseInt(req.params.id);
+  const { is_satisfied, additional_response } = req.body;
+  
+  if (isNaN(dispute_id)) {
+    return res.status(400).json({ error: 'Invalid dispute ID' });
+  }
+  
+  if (typeof is_satisfied !== 'boolean') {
+    return res.status(400).json({ error: 'is_satisfied must be true or false' });
+  }
+  
+  // If not satisfied, additional_response is required
+  if (!is_satisfied && (!additional_response || !additional_response.trim())) {
+    return res.status(400).json({ 
+      error: 'Additional response text is required when not satisfied with verdict' 
+    });
+  }
+
+  submitSatisfactionResponse(
+    dispute_id, 
+    req.user.userId, 
+    is_satisfied, 
+    additional_response?.trim() || null,
+    (err, result) => {
+      if (err) {
+        console.error('Error submitting satisfaction response:', err);
+        if (err.message === 'Dispute not found') {
+          return res.status(404).json({ error: 'Dispute not found' });
+        }
+        if (err.message === 'Cannot submit satisfaction response - dispute not in evaluated state') {
+          return res.status(403).json({ error: 'Cannot submit satisfaction response - dispute not in evaluated state' });
+        }
+        if (err.message.includes('Multi-round tables not yet created')) {
+          return res.status(500).json({ error: 'System not yet updated for multi-round disputes. Please contact administrator.' });
+        }
+        return res.status(500).json({ error: 'Failed to submit satisfaction response' });
+      }
+      
+      let message;
+      if (result.all_satisfied) {
+        message = 'All participants are satisfied. Dispute has been concluded!';
+      } else if (result.status === 'incomplete') {
+        message = 'New round started. Additional responses have been submitted for further evaluation.';
+        
+        // New round started - check if we need to generate a verdict
+        try {
+          console.log('New round started, checking if verdict needed for dispute:', dispute_id, 'round:', result.current_round);
+          await checkAndGenerateNewRoundVerdict(dispute_id, result.current_round);
+        } catch (error) {
+          console.error('Error checking for new round verdict:', error);
+        }
+      } else {
+        message = 'Satisfaction response recorded. Waiting for other participants to respond.';
+      }
+      
+      res.json({ 
+        message,
+        result
+      });
+    }
+  );
+});
+
+// Add this new route for getting dispute status
+router.get('/:id/status', authenticateToken, (req, res) => {
+  const dispute_id = parseInt(req.params.id);
+  
+  if (isNaN(dispute_id)) {
+    return res.status(400).json({ error: 'Invalid dispute ID' });
+  }
+  
+  getDisputeById(dispute_id, (err, dispute) => {
+    if (err) {
+      console.error('Error fetching dispute status:', err);
+      return res.status(500).json({ error: 'Failed to fetch dispute status' });
+    }
+    
+    if (!dispute) {
+      return res.status(404).json({ error: 'Dispute not found' });
+    }
+    
+    // Check if user is a participant
+    const isParticipant = dispute.participants.some(p => p.user_id === req.user.userId);
+    
+    if (!isParticipant) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    const currentRound = dispute.current_round;
+    const acceptedParticipants = dispute.participants.filter(p => p.status === 'accepted');
+    
+    // Check response status for current round
+    const currentRoundResponses = dispute.responses_by_round && dispute.responses_by_round[currentRound] ? 
+      dispute.responses_by_round[currentRound] : [];
+    const responseUserIds = currentRoundResponses.map(r => r.user_id);
+    const participantsWithResponses = acceptedParticipants.filter(p => responseUserIds.includes(p.user_id));
+    
+    // Check satisfaction status for current round  
+    const currentUserSatisfaction = dispute.satisfaction ? 
+      dispute.satisfaction.find(s => s.user_id === req.user.userId && s.round_number === currentRound) : null;
+    
+    const allSatisfactionResponses = dispute.satisfaction ? 
+      dispute.satisfaction.filter(s => s.round_number === currentRound) : [];
+    const participantsWithSatisfaction = acceptedParticipants.filter(p => 
+      allSatisfactionResponses.some(s => s.user_id === p.user_id)
+    );
+    
+    res.json({
+      dispute_id,
+      status: dispute.status,
+      current_round: currentRound,
+      total_participants: acceptedParticipants.length,
+      responses_submitted: participantsWithResponses.length,
+      satisfaction_submitted: participantsWithSatisfaction.length,
+      user_responded_this_round: responseUserIds.includes(req.user.userId),
+      user_satisfaction_submitted: !!currentUserSatisfaction,
+      user_is_satisfied: currentUserSatisfaction?.is_satisfied || null,
+      latest_verdict: dispute.verdicts && dispute.verdicts.length > 0 ? 
+        dispute.verdicts.find(v => v.round_number === currentRound)?.verdict || null : dispute.verdict
+    });
   });
 });
 

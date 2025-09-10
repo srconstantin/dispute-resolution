@@ -15,35 +15,49 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Markdown from 'react-native-markdown-display';
-import { getDisputeById, joinDispute, rejectDispute, submitDisputeResponse, deleteDispute, leaveDispute} from '../services/api';
+import { 
+  getDisputeById, 
+  joinDispute, 
+  rejectDispute, 
+  submitDisputeResponse, 
+  deleteDispute, 
+  leaveDispute, 
+  submitSatisfactionResponse,
+  getContacts,
+  inviteToDispute
+} from '../services/api';
 import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
 export default function DisputeDetailScreen({ route, navigation, token, currentUserId }) {
-  const { disputeId } = route.params
+  const { disputeId } = route.params;
   const [dispute, setDispute] = useState(null);
   const [responseText, setResponseText] = useState('');
+  const [additionalResponseText, setAdditionalResponseText] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const { toast, showSuccess, showError, hideToast } = useToast();
+  const [showSatisfactionQuestion, setShowSatisfactionQuestion] = useState(false);
+  const [showAdditionalResponseBox, setShowAdditionalResponseBox] = useState(false);
   const [editingResponse, setEditingResponse] = useState(false);
+  const [editingRound, setEditingRound] = useState(null);
 
+  // Modal states
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [availableContacts, setAvailableContacts] = useState([]);
   const [selectedContacts, setSelectedContacts] = useState([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
 
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   useEffect(() => {
     loadDisputeDetails();
   }, []);
 
- useEffect(() => {
+  useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadDisputeDetails();
     });
-
     return unsubscribe;
   }, [navigation]);
 
@@ -51,11 +65,39 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     try {
       const data = await getDisputeById(disputeId, token);
       setDispute(data.dispute);
-      
-      const currentUserParticipant = data.dispute.participants.find(p => p.user_id === currentUserId);
-      if (currentUserParticipant && currentUserParticipant.response_text) {
-        setResponseText(currentUserParticipant.response_text);
+
+      const currentRound = data.dispute.current_round || 1;
+
+      // Set response text for current round if user has responded
+      if (data.dispute.responses_by_round && data.dispute.responses_by_round[currentRound]) {
+        const currentRoundResponses = data.dispute.responses_by_round[currentRound];
+        const userResponse = currentRoundResponses.find(r => r.user_id === currentUserId);
+        if (userResponse) {
+          setResponseText(userResponse.response_text);
+        }
+      } else {
+        // Fall back to old format for backward compatibility
+        const currentUserParticipant = data.dispute.participants.find(p => p.user_id === currentUserId);
+        if (currentUserParticipant && currentUserParticipant.response_text) {
+          setResponseText(currentUserParticipant.response_text);
+        }
       }
+
+      // Check if user needs to see satisfaction question
+      const currentVerdict = data.dispute.verdicts && data.dispute.verdicts.length > 0 ? 
+        data.dispute.verdicts.find(v => v.round_number === currentRound) : 
+        (data.dispute.verdict ? { verdict: data.dispute.verdict, round_number: 1 } : null);
+      
+      const userSatisfaction = data.dispute.satisfaction && data.dispute.satisfaction.length > 0 ?
+        data.dispute.satisfaction.find(s => s.user_id === currentUserId && s.round_number === currentRound) :
+        null;
+    
+      setShowSatisfactionQuestion(
+        data.dispute.status === 'evaluated' && 
+        currentVerdict && 
+        !userSatisfaction
+      );
+      
     } catch (error) {
       showError('Failed to load dispute details');
       console.error('Error loading dispute:', error);
@@ -64,16 +106,43 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
-  // Cross-platform confirmation dialog
+  const handleSatisfactionResponse = async (isSatisfied) => {
+    if (!isSatisfied && !additionalResponseText.trim()) {
+      showError('Please provide additional context if you\'re not satisfied with the verdict');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await submitSatisfactionResponse(disputeId, {
+        is_satisfied: isSatisfied,
+        additional_response: isSatisfied ? null : additionalResponseText
+      }, token);
+      
+      if (isSatisfied) {
+        showSuccess('Thank you for your feedback');
+      } else {
+        showSuccess('Additional response submitted for next round');
+      }
+      
+      setShowSatisfactionQuestion(false);
+      setShowAdditionalResponseBox(false);
+      setAdditionalResponseText('');
+      loadDisputeDetails();
+    } catch (error) {
+      showError(error.message || 'Failed to submit satisfaction response');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const showConfirmDialog = (title, message, onConfirm, confirmText = 'Confirm') => {
     if (Platform.OS === 'web') {
-      // Use window.confirm for web
       const confirmed = window.confirm(`${title}\n\n${message}`);
       if (confirmed) {
         onConfirm();
       }
     } else {
-      // Use Alert.alert for mobile
       Alert.alert(
         title,
         message,
@@ -133,16 +202,14 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     try {
       setSubmitting(true);
       await joinDispute(disputeId, token);
-      showSuccess('You have joined the dispute!')
+      showSuccess('You have joined the dispute!');
       loadDisputeDetails();
-
     } catch (error) {
       showError(error.message || 'Failed to join dispute');
     } finally {
       setSubmitting(false);
     }
   };
-
 
   const handleRejectDispute = async () => {
     showConfirmDialog(
@@ -164,7 +231,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     );
   };
 
-
   const handleSubmitResponse = async () => {
     if (!responseText.trim()) {
       showError('Please enter your response');
@@ -175,8 +241,8 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
       setSubmitting(true);
       const result = await submitDisputeResponse(disputeId, responseText.trim(), token);
       
-      if (result.result.completed) {
-        showSuccess('Response submitted! All participants have responded - dispute is now completed.');
+      if (result.result && result.result.round_completed) {
+        showSuccess('Response submitted! All participants have responded - verdict is being generated.');
       } else {
         showSuccess('Response submitted successfully');
       }
@@ -189,19 +255,16 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
-
-// Add these handler functions
   const handleInviteMoreContacts = async () => {
     try {
       setLoadingContacts(true);
       const data = await getContacts(token);
-    
-    // Filter out contacts who are already participants
+      
       const existingEmails = dispute.participants.map(p => p.email);
       const available = data.contacts.filter(contact => 
         !existingEmails.includes(contact.contact_email)
       );
-    
+      
       setAvailableContacts(available);
       setSelectedContacts([]);
       setShowInviteModal(true);
@@ -232,13 +295,12 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     try {
       setSubmitting(true);
       const participant_emails = selectedContacts.map(c => c.contact_email);
-    
-      // You'll need to create this API endpoint
+      
       await inviteToDispute(disputeId, participant_emails, token);
-    
+      
       showSuccess(`Invited ${selectedContacts.length} contact(s) to the dispute`);
       setShowInviteModal(false);
-      loadDisputeDetails(); // Refresh dispute data
+      loadDisputeDetails();
     } catch (error) {
       showError(error.message || 'Failed to send invitations');
     } finally {
@@ -246,37 +308,29 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     }
   };
 
- 
- if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text>Loading...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-  
-  if (!dispute) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text>Dispute not found</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Helper functions
+  const canSubmitResponse = () => {
+    if (!dispute) return false;
+    
+    const currentUser = dispute.participants.find(p => p.user_id === currentUserId);
+    if (!currentUser || currentUser.status !== 'accepted') return false;
+    
+    const currentRound = dispute.current_round || 1;
+    
+    // Check if dispute is incomplete and user hasn't responded to current round
+    if (dispute.responses_by_round && dispute.responses_by_round[currentRound]) {
+      const userHasResponded = dispute.responses_by_round[currentRound].some(r => r.user_id === currentUserId);
+      return dispute.status === 'incomplete' && !userHasResponded;
+    } else {
+      // Fall back to old format
+      return dispute.status === 'incomplete' && !currentUser.response_text;
+    }
+  };
 
-  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
-  const isCreator = dispute.creator_id === currentUserId;
-  const isInvited = currentUserParticipant?.status === 'invited';
-  const isAccepted = currentUserParticipant?.status === 'accepted';
-  const canSubmitResponse = isAccepted && dispute.status === 'ongoing';
-  const canDelete = isCreator && dispute.status !== 'completed' && dispute.status !== 'resolved';
-  const canLeave = !isCreator && isAccepted && dispute.status === 'ongoing';
-  const canInvite = isCreator && dispute.status === 'ongoing'; // Use 'ongoing' instead of 'active'
-
-
+  const canEditResponse = () => {
+    if (!dispute) return false;
+    return dispute.status === 'incomplete' || dispute.status === 'evaluated';
+  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -289,10 +343,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     });
   };
 
-  const getCurrentUserParticipant = () => {
-    return dispute?.participants.find(p => p.user_id === currentUserId);
-  };
-
   const getParticipantStatus = (participant) => {
     if (participant.status === 'invited') return 'Invited';
     if (participant.status === 'accepted' && participant.response_text) return 'Responded';
@@ -301,23 +351,178 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
     return participant.status;
   };
 
+  const renderTimelineItem = (item, index) => {
+    const isVerdict = item.type === 'verdict';
+    const isResponse = item.type === 'response';
+    
+    return (
+      <View key={index} style={styles.timelineItem}>
+        <View style={styles.timelineMarker}>
+          <View style={[
+            styles.timelineDot,
+            isVerdict ? styles.verdictDot : styles.responseDot
+          ]} />
+          {index < timeline.length - 1 && <View style={styles.timelineLine} />}
+        </View>
+        
+        <View style={styles.timelineContent}>
+          {isResponse && (
+            <View style={styles.responseContainer}>
+              <Text style={styles.participantName}>{item.name}</Text>
+              <Text style={styles.roundLabel}>Round {item.round}</Text>
+              <View style={[
+                styles.responseBox,
+                item.user_id === currentUserId && styles.userResponseBox
+              ]}>
+                <Text style={styles.responseText}>{item.response_text}</Text>
+                {item.user_id === currentUserId && canEditResponse() && (
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => {
+                      setResponseText(item.response_text);
+                      setEditingResponse(true);
+                      setEditingRound(item.round);
+                    }}
+                  >
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={styles.timestamp}>
+                {formatDate(item.submitted_at)}
+              </Text>
+            </View>
+          )}
+          
+          {isVerdict && (
+            <View style={styles.verdictContainer}>
+              <Text style={styles.verdictTitle}>
+                Verdict - Round {item.round}
+              </Text>
+              <View style={styles.verdictBox}>
+                <Markdown style={markdownStyles}>
+                  {item.verdict}
+                </Markdown>
+              </View>
+              <Text style={styles.timestamp}>
+                {formatDate(item.generated_at)}
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text>Loading dispute details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!dispute) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text>Dispute not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Create chronological timeline of all responses and verdicts
+  const timeline = [];
+  
+  // Add all responses and verdicts in chronological order
+  if (dispute.responses_by_round) {
+    Object.keys(dispute.responses_by_round).forEach(round => {
+      const roundNum = parseInt(round);
+      
+      // Add responses for this round
+      dispute.responses_by_round[round].forEach(response => {
+        timeline.push({
+          type: 'response',
+          round: roundNum,
+          ...response,
+          sortKey: `${roundNum}-response-${response.submitted_at}`
+        });
+      });
+      
+      // Add verdict for this round if it exists
+      const verdict = dispute.verdicts && dispute.verdicts.find(v => v.round_number === roundNum);
+      if (verdict) {
+        timeline.push({
+          type: 'verdict',
+          round: roundNum,
+          ...verdict,
+          sortKey: `${roundNum}-verdict-${verdict.generated_at}`
+        });
+      }
+    });
+  } else {
+    // Fall back to old format
+    dispute.participants.filter(p => p.response_text).forEach(participant => {
+      timeline.push({
+        type: 'response',
+        round: 1,
+        user_id: participant.user_id,
+        name: participant.name,
+        response_text: participant.response_text,
+        submitted_at: participant.response_submitted_at,
+        sortKey: `1-response-${participant.response_submitted_at}`
+      });
+    });
+    
+    if (dispute.verdict) {
+      timeline.push({
+        type: 'verdict',
+        round: 1,
+        verdict: dispute.verdict,
+        generated_at: dispute.updated_at,
+        sortKey: `1-verdict-${dispute.updated_at}`
+      });
+    }
+  }
+  
+  // Sort timeline chronologically
+  timeline.sort((a, b) => {
+    if (a.round !== b.round) return a.round - b.round;
+    if (a.type === 'response' && b.type === 'verdict') return -1;
+    if (a.type === 'verdict' && b.type === 'response') return 1;
+    return new Date(a.submitted_at || a.generated_at) - new Date(b.submitted_at || b.generated_at);
+  });
+
+  const currentUserParticipant = dispute.participants?.find(p => p.user_id === currentUserId);
+  const isCreator = dispute.creator_id === currentUserId;
+  const isInvited = currentUserParticipant?.status === 'invited';
+  const isAccepted = currentUserParticipant?.status === 'accepted';
+  const canDelete = isCreator && dispute.status !== 'evaluated' && dispute.status !== 'concluded';
+  const canLeave = !isCreator && isAccepted && dispute.status === 'incomplete';
+  const canInvite = isCreator && dispute.status === 'incomplete';
+
   const markdownStyles = {
     body: {
       fontSize: 16,
       lineHeight: 24,
       color: theme.colors.text,
-      fontFamily: theme.fonts.body,
     },
-    paragraph: {
-      marginBottom: theme.spacing.md,
+    strong: {
+      fontWeight: 'bold',
+    },
+    em: {
+      fontStyle: 'italic',
     },
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
-        style={styles.container} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
         <View style={styles.header}>
           <TouchableOpacity 
@@ -330,49 +535,78 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
           <Text style={styles.title}>Dispute Details</Text>
         </View>
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Dispute Info */}
-          <View style={styles.section}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          
+          {/* Dispute Header */}
+          <View style={styles.header}>
             <Text style={styles.disputeTitle}>{dispute.title}</Text>
-            <View style={styles.disputeInfo}>
-              <Text style={styles.infoText}>Created by: {dispute.creator_name}</Text>
-              <Text style={styles.infoText}>Created: {formatDate(dispute.created_at)}</Text>
-              <Text style={styles.infoText}>Status: {dispute.status}</Text>
+            <Text style={styles.subtitle}>
+              Created by {dispute.creator_name} • Round {dispute.current_round || 1} • {dispute.status}
+            </Text>
+          </View>
+
+          {/* Status Summary */}
+          <View style={styles.statusSection}>
+            <Text style={styles.sectionTitle}>Status</Text>
+            <View style={styles.statusContainer}>
+              <Text style={styles.statusText}>
+                {dispute.status === 'incomplete' && 'Waiting for all participants to respond'}
+                {dispute.status === 'evaluated' && 'Verdict available - awaiting participant feedback'}
+                {dispute.status === 'concluded' && 'Dispute concluded - all participants satisfied'}
+                {dispute.status === 'cancelled' && 'Dispute cancelled'}
+                {dispute.status === 'rejected' && 'Dispute rejected'}
+              </Text>
             </View>
           </View>
 
-          {/* Invitation Actions */}
+          {/* Accept/Reject Invitation */}
           {isInvited && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>You're Invited!</Text>
+              <Text style={styles.sectionTitle}>Invitation</Text>
               <Text style={styles.invitationText}>
-                {dispute.creator_name} has invited you to participate in this dispute. 
-                Would you like to accept or reject the invitation?
+                You've been invited to participate in this dispute. Do you accept?
               </Text>
-              <View style={styles.invitationButtons}>
-                <TouchableOpacity 
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
                   style={[styles.actionButton, styles.acceptButton]}
                   onPress={handleJoinDispute}
                   disabled={submitting}
                 >
-                  <Text style={styles.actionButtonText}>
-                    {submitting ? 'Joining...' : 'Accept'}
-                  </Text>
+                  <Text style={styles.actionButtonText}>Accept</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[styles.actionButton, styles.rejectButton]}
                   onPress={handleRejectDispute}
                   disabled={submitting}
                 >
-                  <Text style={styles.actionButtonText}>
-                    {submitting ? 'Rejecting...' : 'Reject'}
-                  </Text>
+                  <Text style={styles.actionButtonText}>Reject</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {/* Action Buttons for Creator and Participants */}
+          {/* Participants */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Participants</Text>
+            {dispute.participants.map((participant) => (
+              <View key={participant.user_id} style={styles.participantRow}>
+                <Text style={styles.participantName}>
+                  {participant.name}
+                  {participant.user_id === currentUserId && ' (You)'}
+                  {participant.user_id === dispute.creator_id && ' (Creator)'}
+                </Text>
+                <Text style={[
+                  styles.participantStatus,
+                  participant.status === 'accepted' ? styles.acceptedStatus : 
+                  participant.status === 'rejected' ? styles.rejectedStatus : styles.invitedStatus
+                ]}>
+                  {participant.status}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Action Buttons */}
           {(canDelete || canLeave || canInvite) && (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Actions</Text>
@@ -382,34 +616,28 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
                   onPress={handleInviteMoreContacts}
                   disabled={submitting || loadingContacts}
                 >
-                  <Ionicons name="person-add-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
                   <Text style={styles.actionButtonText}>
                     {loadingContacts ? 'Loading...' : 'Invite More Contacts'}
                   </Text>
                 </TouchableOpacity>
               )}
-
-
               {canDelete && (
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.deleteButton]}
                   onPress={handleDeleteDispute}
                   disabled={submitting}
                 >
-                  <Ionicons name="trash-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
                   <Text style={styles.actionButtonText}>
                     {submitting ? 'Deleting...' : 'Delete Dispute'}
                   </Text>
                 </TouchableOpacity>
               )}
-
               {canLeave && (
                 <TouchableOpacity 
                   style={[styles.actionButton, styles.leaveButton]}
                   onPress={handleLeaveDispute}
                   disabled={submitting}
                 >
-                  <Ionicons name="exit-outline" size={18} color="#FFFFFF" style={{marginRight: 8}} />
                   <Text style={styles.actionButtonText}>
                     {submitting ? 'Leaving...' : 'Leave Dispute'}
                   </Text>
@@ -418,166 +646,219 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             </View>
           )}
 
-          {/* Participants */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Participants</Text>
-            {dispute.participants.map((participant, index) => (
-              <View key={index} style={styles.participantItem}>
-                <View style={styles.participantInfo}>
-                  <Text style={styles.participantName}>
-                    {participant.name}
-                    {participant.user_id === dispute.creator_id && ' (Creator)'}
-                  </Text>
-                  <Text style={styles.participantEmail}>{participant.email}</Text>
-                </View>
-                <Text style={styles.participantStatus}>
-                  {getParticipantStatus(participant)}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-
-          {/* Participants' Personal Accounts */}
-            {dispute.participants.some(p => p.response_text) && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Participants' personal accounts of the dispute</Text>
-                {dispute.participants
-                .filter(p => p.response_text)
-                .map((participant, index) => (
-                <View key={index} style={styles.responseContainer}>
-                  <Text style={styles.responseAuthor}>
-                    {participant.name}
-                    {participant.user_id === dispute.creator_id && ' (Creator)'}
-                    {participant.user_id === currentUserId && ' (You)'}
-                  </Text>
-          
-                  {participant.user_id === currentUserId ? (
-                    // Current user's response - clickable to edit
-                    <TouchableOpacity 
-                      style={styles.editableResponse}
-                      onPress={() => {
-                        setResponseText(participant.response_text);
-                        setEditingResponse(true);
-                      }}
-                      disabled={dispute.status !== 'ongoing'}
-                    >
-                      <Text style={styles.responseText}>{participant.response_text}</Text>
-                      {dispute.status === 'ongoing' && (
-                        <Text style={styles.editHint}>Tap to edit your response</Text>
-                      )}
-                    </TouchableOpacity>
-                  ) : (
-                    // Other participants' responses - read-only
-                    <View style={styles.readOnlyResponse}>
-                      <Text style={styles.responseText}>{participant.response_text}</Text>
-                    </View>
-                  )}
-          
-                  {participant.response_submitted_at && (
-                    <Text style={styles.responseTimestamp}>
-                      Submitted {formatDate(participant.response_submitted_at)}
-                    </Text>
-                  )}
-                </View>
-              ))}
-          </View>
-        )}
-
-        {/* Edit Response Modal/Section */}
-        {editingResponse && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Edit Your Response</Text>
-            <Text style={styles.responsePrompt}>
-              Describe the dispute in your own words. What happened? What did you do? 
-              What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?
-            </Text>
-            <TextInput
-              style={styles.responseInput}
-              placeholder="Share your side of the story..."
-              value={responseText}
-              onChangeText={setResponseText}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>{responseText.length} characters</Text>
-    
-           <View style={styles.editButtonContainer}>
+          {/* Current Round Response Input */}
+          {canSubmitResponse() && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                Your Response - Round {dispute.current_round || 1}
+              </Text>
+              <Text style={styles.responsePrompt}>
+                {(dispute.current_round && dispute.current_round > 1)
+                  ? "Please add any context, corrections, updates, or counterpoints that haven't been adequately considered in the discussion so far."
+                  : "Describe the dispute in your own words. What happened? What did you do? What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?"
+                }
+              </Text>
+              <TextInput
+                style={styles.responseInput}
+                placeholder="Share your side of the story..."
+                value={responseText}
+                onChangeText={setResponseText}
+                multiline
+                numberOfLines={6}
+                textAlignVertical="top"
+              />
+              <Text style={styles.characterCount}>{responseText.length} characters</Text>
+              
               <TouchableOpacity
-                style={[styles.actionButton, styles.cancelButton]}
-                onPress={() => {
-                  setEditingResponse(false);
-                  setResponseText(currentUserParticipant?.response_text || '');
-                }}
+                style={[
+                  styles.submitButton,
+                  (!responseText.trim() || submitting) && styles.buttonDisabled
+                ]}
+                onPress={handleSubmitResponse}
+                disabled={!responseText.trim() || submitting}
               >
-                <Text style={styles.actionButtonText}>Cancel</Text>
-              </TouchableOpacity>
-      
-              <TouchableOpacity
-                  style={[
-                    styles.actionButton, 
-                    styles.saveButton,
-                    (!responseText.trim() || submitting) && styles.buttonDisabled
-                  ]}
-                  onPress={() => {
-                    handleSubmitResponse();
-                    setEditingResponse(false);
-                  }}
-                  disabled={!responseText.trim() || submitting}
-                >
-                  <Text style={styles.actionButtonText}>
-                    {submitting ? 'Saving...' : 'Save Changes'}
+                <Text style={styles.submitButtonText}>
+                  {submitting ? 'Submitting...' : 'Submit Response'}
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
+          )}
 
-        {canSubmitResponse && !currentUserParticipant?.response_text && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Your Response</Text>
-            <Text style={styles.responsePrompt}>
-              Describe the dispute in your own words. What happened? What did you do? 
-              What did the other participants do? What is the problem as you see it, and how do you feel about it? Finally, what outcome would you like to achieve?
-            </Text>
-            <TextInput
-              style={styles.responseInput}
-              placeholder="Share your side of the story..."
-              value={responseText}
-              onChangeText={setResponseText}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-            />
-            <Text style={styles.characterCount}>{responseText.length} characters</Text>
-    
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                (!responseText.trim() || submitting) && styles.buttonDisabled
-              ]}
-              onPress={handleSubmitResponse}
-              disabled={!responseText.trim() || submitting}
-            >
-              <Text style={styles.submitButtonText}>
-                {submitting ? 'Submitting...' : 'Submit Response'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-          {/* Completed Dispute - Show Verdict */}
-          {dispute.status === 'completed' && (
+          {/* Satisfaction Question */}
+          {showSatisfactionQuestion && (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Verdict</Text>
-              <View style={styles.verdictContainer}>
-                <Markdown style={markdownStyles}>
-                  {dispute.verdict || 'Verdict will appear here'}
-                </Markdown>
+              <Text style={styles.sectionTitle}>Verdict Feedback</Text>
+              <Text style={styles.satisfactionQuestion}>
+                Are you satisfied with the verdict or do you want to discuss further?
+              </Text>
+              
+              {showAdditionalResponseBox && (
+                <View style={styles.additionalResponseContainer}>
+                  <Text style={styles.responsePrompt}>
+                    Please add any context, corrections, updates, or counterpoints that haven't been adequately considered in the discussion so far.
+                  </Text>
+                  <TextInput
+                    style={styles.responseInput}
+                    placeholder="Additional context or corrections..."
+                    value={additionalResponseText}
+                    onChangeText={setAdditionalResponseText}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                  <Text style={styles.characterCount}>{additionalResponseText.length} characters</Text>
+                </View>
+              )}
+              
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.satisfiedButton]}
+                  onPress={() => handleSatisfactionResponse(true)}
+                  disabled={submitting}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {submitting ? 'Submitting...' : 'Satisfied'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.notSatisfiedButton]}
+                  onPress={() => {
+                    if (showAdditionalResponseBox) {
+                      handleSatisfactionResponse(false);
+                    } else {
+                      setShowAdditionalResponseBox(true);
+                    }
+                  }}
+                  disabled={submitting || (showAdditionalResponseBox && !additionalResponseText.trim())}
+                >
+                  <Text style={styles.actionButtonText}>
+                    {showAdditionalResponseBox ? 'Submit Additional Response' : 'Not Satisfied'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
+
+          {/* Timeline of Responses and Verdicts */}
+          {timeline.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Discussion Timeline</Text>
+              {timeline.map((item, index) => renderTimelineItem(item, index))}
+            </View>
+          )}
+
+          {/* Edit Response Modal */}
+          {editingResponse && (
+            <Modal
+              visible={editingResponse}
+              animationType="slide"
+              presentationStyle="pageSheet"
+            >
+              <SafeAreaView style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={() => setEditingResponse(false)}>
+                    <Text style={styles.cancelButton}>Cancel</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>Edit Response</Text>
+                  <TouchableOpacity 
+                    onPress={async () => {
+                      setEditingResponse(false);
+                      await handleSubmitResponse();
+                    }}
+                    disabled={!responseText.trim() || submitting}
+                  >
+                    <Text style={[
+                      styles.saveButton,
+                      (!responseText.trim() || submitting) && styles.buttonDisabled
+                    ]}>
+                      Save
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalPrompt}>
+                    Edit your response for Round {editingRound}:
+                  </Text>
+                  <TextInput
+                    style={styles.modalTextInput}
+                    value={responseText}
+                    onChangeText={setResponseText}
+                    multiline
+                    textAlignVertical="top"
+                    autoFocus
+                  />
+                  <Text style={styles.characterCount}>{responseText.length} characters</Text>
+                </View>
+              </SafeAreaView>
+            </Modal>
+          )}
+
+          {/* Invite More Contacts Modal */}
+          {showInviteModal && (
+            <Modal
+              visible={showInviteModal}
+              animationType="slide"
+              presentationStyle="pageSheet"
+            >
+              <SafeAreaView style={styles.modalContainer}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity onPress={() => setShowInviteModal(false)}>
+                    <Text style={styles.cancelButton}>Cancel</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>Invite Contacts</Text>
+                  <TouchableOpacity 
+                    onPress={handleSendInvitations}
+                    disabled={selectedContacts.length === 0 || submitting}
+                  >
+                    <Text style={[
+                      styles.sendButton,
+                      (selectedContacts.length === 0 || submitting) && styles.buttonDisabled
+                    ]}>
+                      {submitting ? 'Sending...' : 'Send'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+        
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalSubtitle}>
+                    Select contacts to invite to this dispute ({selectedContacts.length} selected)
+                  </Text>
+          
+                  {availableContacts.length === 0 ? (
+                    <View style={styles.centerContainer}>
+                      <Text style={styles.emptyText}>No additional contacts available to invite</Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={availableContacts}
+                      renderItem={({ item }) => {
+                        const isSelected = selectedContacts.find(c => c.contact_email === item.contact_email);
+                
+                        return (
+                          <TouchableOpacity 
+                            style={[styles.contactItem, isSelected && styles.selectedContact]}
+                            onPress={() => toggleContactSelection(item)}
+                          >
+                            <View style={styles.contactInfo}>
+                              <Text style={styles.contactName}>{item.contact_name}</Text>
+                              <Text style={styles.contactEmail}>{item.contact_email}</Text>
+                            </View>
+                            <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                              {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      }}
+                      keyExtractor={(item) => item.contact_email}
+                      showsVerticalScrollIndicator={false}
+                    />
+                  )}
+                </View>
+              </SafeAreaView>
+            </Modal>
+          )}
+
         </ScrollView>
 
         {toast.visible && (
@@ -588,72 +869,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
           />
         )}
       </KeyboardAvoidingView>
-
-        {/* Invite More Contacts Modal */}
-        {showInviteModal && (
-          <Modal
-            visible={showInviteModal}
-            animationType="slide"
-            presentationStyle="pageSheet"
-          >
-            <SafeAreaView style={styles.modalContainer}>
-              <View style={styles.modalHeader}>
-                <TouchableOpacity onPress={() => setShowInviteModal(false)}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
-                </TouchableOpacity>
-                <Text style={styles.modalTitle}>Invite Contacts</Text>
-                <TouchableOpacity 
-                  onPress={handleSendInvitations}
-                  disabled={selectedContacts.length === 0 || submitting}
-                >
-                  <Text style={[
-                    styles.sendButton,
-                    (selectedContacts.length === 0 || submitting) && styles.buttonDisabled
-                 ]}>
-                    {submitting ? 'Sending...' : 'Send'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-      
-              <View style={styles.modalContent}>
-                <Text style={styles.modalSubtitle}>
-                  Select contacts to invite to this dispute ({selectedContacts.length} selected)
-                </Text>
-        
-                {availableContacts.length === 0 ? (
-                  <View style={styles.centerContainer}>
-                    <Text style={styles.emptyText}>No additional contacts available to invite</Text>
-                  </View>
-                ) : (
-                  <FlatList
-                    data={availableContacts}
-                    renderItem={({ item }) => {
-                      const isSelected = selectedContacts.find(c => c.contact_email === item.contact_email);
-              
-                      return (
-                        <TouchableOpacity 
-                          style={[styles.contactItem, isSelected && styles.selectedContact]}
-                          onPress={() => toggleContactSelection(item)}
-                        >
-                          <View style={styles.contactInfo}>
-                            <Text style={styles.contactName}>{item.contact_name}</Text>
-                            <Text style={styles.contactEmail}>{item.contact_email}</Text>
-                          </View>
-                          <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                            {isSelected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    }}
-                    keyExtractor={(item) => item.contact_email}
-                    showsVerticalScrollIndicator={false}
-                  />
-                )}
-              </View>
-            </SafeAreaView>
-          </Modal>
-        )}
-
     </SafeAreaView>
   );
 }
@@ -663,79 +878,136 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.xl,
-    paddingTop: 50,
-    paddingBottom: theme.spacing.lg,
-    backgroundColor: theme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    ...theme.shadows.small,
-  },
-  backButton: {
-    marginRight: theme.spacing.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButtonText: {
-    fontSize: 16,
-    color: theme.colors.primary,
-    fontFamily: theme.fonts.headingRegular,
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: theme.fonts.headingMedium,
-    color: theme.colors.text,
-  },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: theme.spacing.xl,
+    padding: 16,
   },
-  section: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.borderRadius.large,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    ...theme.shadows.medium,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: {
+    marginBottom: 24,
   },
   disputeTitle: {
-    fontSize: 22,
-    fontFamily: theme.fonts.heading,
+    fontSize: 24,
+    fontWeight: 'bold',
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    marginBottom: 8,
   },
-  disputeInfo: {
-    gap: 4,
-  },
-  infoText: {
-    fontSize: 14,
+  subtitle: {
+    fontSize: 16,
     color: theme.colors.textSecondary,
-    fontFamily: theme.fonts.body,
+  },
+  section: {
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontFamily: theme.fonts.headingMedium,
+    fontSize: 18,
+    fontWeight: '600',
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
+    marginBottom: 12,
   },
-  invitationText: {
+  statusSection: {
+    marginBottom: 24,
+  },
+  statusContainer: {
+    backgroundColor: theme.colors.surfaceSecondary,
+    padding: 12,
+    borderRadius: 8,
+  },
+  statusText: {
     fontSize: 14,
     color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.lg,
-    lineHeight: 20,
-    fontFamily: theme.fonts.body,
   },
-  invitationButtons: {
+  participantRow: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  participantName: {
+    fontSize: 16,
+    color: theme.colors.text,
+    flex: 1,
+  },
+  participantStatus: {
+    fontSize: 14,
+    fontWeight: '500',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  acceptedStatus: {
+    color: theme.colors.success,
+    backgroundColor: theme.colors.successBackground,
+  },
+  rejectedStatus: {
+    color: theme.colors.error,
+    backgroundColor: theme.colors.errorBackground,
+  },
+  invitedStatus: {
+    color: theme.colors.warning,
+    backgroundColor: theme.colors.warningBackground,
+  },
+  responsePrompt: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  responseInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.surface,
+    minHeight: 120,
+  },
+  characterCount: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    textAlign: 'right',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  submitButton: {
+    backgroundColor: theme.colors.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: theme.colors.surface,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
   },
   actionButton: {
     flex: 1,
-    borderRadius: theme.borderRadius.small,
-    paddingVertical: theme.spacing.md,
+    padding: 12,
+    borderRadius: 8,
     alignItems: 'center',
+  },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   acceptButton: {
     backgroundColor: theme.colors.success,
@@ -743,165 +1015,221 @@ const styles = StyleSheet.create({
   rejectButton: {
     backgroundColor: theme.colors.error,
   },
-
+  satisfiedButton: {
+    backgroundColor: theme.colors.success,
+  },
+  notSatisfiedButton: {
+    backgroundColor: theme.colors.warning,
+  },
+  inviteButton: {
+    backgroundColor: theme.colors.primary,
+  },
   deleteButton: {
-    backgroundColor: '#DC2626', // Red color for delete
+    backgroundColor: theme.colors.error,
   },
   leaveButton: {
-    backgroundColor: '#F59E0B', // Orange color for leave
+    backgroundColor: theme.colors.warning,
   },
-
-  actionButtonText: {
-    color: '#FFFFFF',
+  satisfactionQuestion: {
     fontSize: 16,
-    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    marginBottom: 16,
+    fontWeight: '500',
   },
-  participantItem: {
+  additionalResponseContainer: {
+    marginBottom: 16,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 24,
+  },
+  timelineMarker: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  responseDot: {
+    backgroundColor: theme.colors.primary,
+  },
+  verdictDot: {
+    backgroundColor: theme.colors.warning,
+  },
+  timelineLine: {
+    width: 2,
+    flex: 1,
+    backgroundColor: theme.colors.border,
+    marginTop: 8,
+  },
+  timelineContent: {
+    flex: 1,
+  },
+  responseContainer: {
+    marginBottom: 8,
+  },
+  responseBox: {
+    backgroundColor: theme.colors.surfaceSecondary,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  userResponseBox: {
+    backgroundColor: theme.colors.primaryBackground,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  responseText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    lineHeight: 22,
+  },
+  editButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.primary,
+    borderRadius: 4,
+  },
+  editButtonText: {
+    color: theme.colors.surface,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  verdictContainer: {
+    marginBottom: 8,
+  },
+  verdictTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  verdictBox: {
+    backgroundColor: theme.colors.warningBackground,
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.warning,
+    marginBottom: 8,
+  },
+  roundLabel: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  timestamp: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  invitationText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  participantInfo: {
-    flex: 1,
-  },
-  participantName: {
-    fontSize: 16,
-    fontFamily: theme.fonts.headingMedium,
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: theme.colors.text,
   },
-  participantEmail: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    fontFamily: theme.fonts.body,
-  },
-  participantStatus: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    fontFamily: theme.fonts.headingRegular,
-  },
-  responsePrompt: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.lg,
-    lineHeight: 20,
-    fontFamily: theme.fonts.body,
-  },
-  responseInput: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.md,
+  cancelButton: {
     fontSize: 16,
+    color: theme.colors.error,
+  },
+  saveButton: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  sendButton: {
+    fontSize: 16,
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 16,
+  },
+  modalPrompt: {
+    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 12,
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 16,
+  },
+  modalTextInput: {
+    flex: 1,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    minHeight: 120,
-    textAlignVertical: 'top',
-    fontFamily: theme.fonts.body,
-  },
-  characterCount: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    textAlign: 'right',
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
-    fontFamily: theme.fonts.body,
-  },
-  submitButton: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: theme.borderRadius.small,
-    paddingVertical: theme.spacing.md,
-    alignItems: 'center',
-    ...theme.shadows.small,
-  },
-  buttonDisabled: {
-    backgroundColor: theme.colors.textLight,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
-    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    backgroundColor: theme.colors.surface,
   },
-  verdictContainer: {
-    backgroundColor: '#F0F9F0',
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.success,
+  contactItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  selectedContact: {
+    backgroundColor: theme.colors.primaryBackground,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+  },
+  contactEmail: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loadingText: {
+  emptyText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
-    fontFamily: theme.fonts.body,
-  },
-  errorText: {
-    fontSize: 16,
-    color: theme.colors.error,
-    fontFamily: theme.fonts.body,
-  },
-  responseContainer: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  responseAuthor: {
-    fontSize: 16,
-    fontFamily: theme.fonts.headingMedium,
-    color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
-  },
-  editableResponse: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
-    borderStyle: 'dashed',
-  },
-  readOnlyResponse: {
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.small,
-    padding: theme.spacing.md,
-  },
-  responseText: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: theme.colors.text,
-    fontFamily: theme.fonts.body,
-  },
-  editHint: {
-    fontSize: 12,
-    color: theme.colors.primary,
-    fontStyle: 'italic',
-    marginTop: theme.spacing.sm,
-    fontFamily: theme.fonts.body,
-  },
-  responseTimestamp: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: theme.spacing.sm,
-    fontFamily: theme.fonts.body,
-  },
-  editButtonContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.md,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.textSecondary,
-    flex: 1,
-  },
-  saveButton: {
-    backgroundColor: theme.colors.primary,
-    flex: 1,
+    textAlign: 'center',
   },
 });
