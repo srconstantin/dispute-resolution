@@ -629,6 +629,10 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
         WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
       `, [dispute_id, currentRound]);
 
+      console.log(`RAW SQL RESULT:`, JSON.stringify(completionCheck.rows[0], null, 2));
+      console.log(`Raw still_invited value:`, completionCheck.rows[0].still_invited);
+      console.log(`Type of still_invited:`, typeof completionCheck.rows[0].still_invited);
+
       const totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
       const responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
       const stillInvited = parseInt(completionCheck.rows[0].still_invited);
