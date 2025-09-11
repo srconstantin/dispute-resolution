@@ -67,7 +67,6 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
 
   useEffect(() => {
     loadDisputes();
-    loadLastViewedTimes();
   }, []);
 
 
@@ -75,7 +74,6 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadDisputes();
-      loadLastViewedTimes();
     });
   return unsubscribe;
 }, [navigation]);
@@ -84,7 +82,11 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
     try {
       setLoading(true);
       const data = await getDisputes(token);
-      setDisputes(data.disputes || []);
+      const disputesList = data.disputes || [];
+      setDisputes(disputesList);
+    
+      // This happens automatically now ↓
+      await loadLastViewedTimes(disputesList);
     } catch (error) {
       Alert.alert('Error', 'Failed to load disputes');
       console.error('Error loading disputes:', error);
