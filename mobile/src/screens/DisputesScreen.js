@@ -143,210 +143,28 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
 
   // Helper function to check if dispute has unread content
   const hasUnreadContent = (dispute) => {
+    if (!dispute || !dispute.id) return false;
+  
     const lastViewed = lastViewedTimes[dispute.id];
-
-    console.log(`🔍 DEBUG - Dispute ${dispute.id} (${dispute.title}):`, {
-      lastViewed: lastViewed ? lastViewed.toISOString() : 'NEVER VIEWED',
-      currentUserId: currentUserId,
-      disputeStatus: dispute.status,
-      hasResponsesByRound: !!dispute.responses_by_round,
-      responsesByRound: dispute.responses_by_round,
-      hasVerdicts: !!dispute.verdicts,
-      verdicts: dispute.verdicts,
-      hasOldVerdict: !!dispute.verdict,
-      oldVerdict: dispute.verdict ? {verdict: dispute.verdict.substring(0, 50) + '...', updated_at: dispute.updated_at} : null
-    });
-    
+  
+    // If never viewed, only show notification if there's actual activity beyond creation
     if (!lastViewed) {
-      // If user has never viewed this dispute, check if there's any content
-      console.log(`👀 Never viewed - hasAnyContent: ${hasContent}`);
-      return hasAnyContent(dispute);
+      const createdAt = new Date(dispute.created_at);
+      const lastActivityAt = new Date(dispute.last_activity_at);
+      // Show notification if there's been activity after creation (responses, verdicts, etc.)
+      return lastActivityAt.getTime() > createdAt.getTime();
     }
 
-    // Check for new responses from other users
-    if (dispute.responses_by_round) {
-      for (const round in dispute.responses_by_round) {
-        const responses = dispute.responses_by_round[round];
-        console.log(`📝 Checking Round ${round} responses:`, responses);
-        for (const response of responses) {
-          // Skip user's own responses
-          if (response.user_id === currentUserId) continue;
-          console.log(`⏭️ Skipping own response from user ${response.user_id}`);
-          const responseDate = new Date(response.submitted_at);
-          console.log(`📅 Other user response:`, {
-            user_id: response.user_id,
-            submitted_at: response.submitted_at,
-            responseDate: responseDate.toISOString(),
-            lastViewed: lastViewed.toISOString(),
-            isAfter: responseDate > lastViewed
-          });
-
-          if (responseDate > lastViewed) {
-            console.log(`🚨 FOUND UNREAD RESPONSE!`);
-            return true;
-          }
-        }
-      }
-    }
-
-    // Check for new verdicts
-    if (dispute.verdicts) {
-      for (const verdict of dispute.verdicts) {
-        console.log(`⚖️ Checking verdicts:`, dispute.verdicts);
-        const verdictDate = new Date(verdict.generated_at);
-        console.log(`📅 Verdict:`, {
-          round: verdict.round_number,
-          generated_at: verdict.generated_at,
-          verdictDate: verdictDate.toISOString(),
-          lastViewed: lastViewed.toISOString(),
-          isAfter: verdictDate > lastViewed
-        });
-        if (verdictDate > lastViewed) {
-          console.log(`🚨 FOUND UNREAD VERDICT!`);
-          return true;
-        }
-      }
-    }
-
-    // Fall back to old format
-    if (dispute.verdict && dispute.updated_at) {
-      const verdictDate = new Date(dispute.updated_at);
-      if (verdictDate > lastViewed) {
-        return true;
-      }
-    }
-
-    // Check old format responses
-    if (dispute.participants) {
-      for (const participant of dispute.participants) {
-        if (participant.user_id === currentUserId) continue;
-        if (participant.response_text && participant.response_submitted_at) {
-          const responseDate = new Date(participant.response_submitted_at);
-          if (responseDate > lastViewed) {
-            return true;
-          }
-        }
-      }
-    }
-
-    return false;
+  // If viewed before, show notification if there's been activity since last view
+    const lastActivityAt = new Date(dispute.last_activity_at);
+    return lastActivityAt > lastViewed;
   };
 
-  // Helper function to check if dispute has any content at all
-  const hasAnyContent = (dispute) => {
-    // Check for responses from other users
-    if (dispute.responses_by_round) {
-      for (const round in dispute.responses_by_round) {
-        const responses = dispute.responses_by_round[round];
-        const otherUserResponses = responses.filter(r => r.user_id !== currentUserId);
-        if (otherUserResponses.length > 0) {
-          return true;
-        }
-      }
-    }
 
-    // Check for verdicts
-    if (dispute.verdicts && dispute.verdicts.length > 0) {
-      return true;
-    }
-
-    // Fall back to old format
-    if (dispute.verdict) {
-      return true;
-    }
-
-    // Check for responses from other participants (old format)
-    if (dispute.participants) {
-      const otherParticipants = dispute.participants.filter(p => 
-        p.user_id !== currentUserId && p.response_text
-      );
-      if (otherParticipants.length > 0) {
-        return true;
-      }
-    }
-
-    return false;
-  };
   const getUnreadCount = (dispute) => {
-    const lastViewed = lastViewedTimes[dispute.id];
-    
-    if (!lastViewed) {
-      // Count all content if never viewed
-      let count = 0;
-      
-      if (dispute.responses_by_round) {
-        for (const round in dispute.responses_by_round) {
-          const responses = dispute.responses_by_round[round];
-          count += responses.filter(r => r.user_id !== currentUserId).length;
-        }
-      }
-      
-      if (dispute.verdicts) {
-        count += dispute.verdicts.length;
-      }
-      
-      // Fall back to old format
-      if (dispute.participants) {
-        count += dispute.participants.filter(p => 
-          p.user_id !== currentUserId && p.response_text
-        ).length;
-      }
-      
-      if (dispute.verdict) {
-        count += 1;
-      }
-      
-      return count;
-    }
-
-    let unreadCount = 0;
-
-    // Count new responses
-    if (dispute.responses_by_round) {
-      for (const round in dispute.responses_by_round) {
-        const responses = dispute.responses_by_round[round];
-        for (const response of responses) {
-          if (response.user_id === currentUserId) continue;
-          
-          const responseDate = new Date(response.submitted_at);
-          if (responseDate > lastViewed) {
-            unreadCount++;
-          }
-        }
-      }
-    }
-
-    // Count new verdicts
-    if (dispute.verdicts) {
-      for (const verdict of dispute.verdicts) {
-        const verdictDate = new Date(verdict.generated_at);
-        if (verdictDate > lastViewed) {
-          unreadCount++;
-        }
-      }
-    }
-
-    // Count old format content
-    if (dispute.verdict && dispute.updated_at) {
-      const verdictDate = new Date(dispute.updated_at);
-      if (verdictDate > lastViewed) {
-        unreadCount++;
-      }
-    }
-
-    if (dispute.participants) {
-      for (const participant of dispute.participants) {
-        if (participant.user_id === currentUserId) continue;
-        if (participant.response_text && participant.response_submitted_at) {
-          const responseDate = new Date(participant.response_submitted_at);
-          if (responseDate > lastViewed) {
-            unreadCount++;
-          }
-        }
-      }
-    }
-
-    return unreadCount;
+    // For the simplified version, we'll just return 1 if there's unread content
+    // since we don't have detailed counts without the full data
+    return hasUnreadContent(dispute) ? 1 : 0;
   };
 
 

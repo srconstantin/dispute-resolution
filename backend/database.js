@@ -263,22 +263,79 @@ const addParticipantsToDispute = (dispute_id, participant_ids, callback) => {
 
 const getDisputesByUser = async (user_id, callback) => {
   try {
-    const result = await pool.query(`
-      SELECT DISTINCT 
-        d.id,
-        d.title_encrypted,
-        d.creator_id,
-        d.status,
-        d.verdict_encrypted,
-        d.created_at,
-        u.name_encrypted as creator_name_encrypted,
-        dp.status as user_participation_status
-      FROM disputes d
-      JOIN users u ON d.creator_id = u.id 
-      JOIN dispute_participants dp ON d.id = dp.dispute_id
-      WHERE dp.user_id = $1
-      ORDER BY d.created_at DESC
-    `, [user_id]);
+    // Check if we have new multi-round tables
+    let hasMultiRoundTables = false;
+    try {
+      await pool.query('SELECT 1 FROM dispute_responses LIMIT 1');
+      hasMultiRoundTables = true;
+    } catch (e) {
+      // Tables don't exist yet, use old structure
+    }
+
+    let query, params;
+
+    if (hasMultiRoundTables) {
+      // New format query - include activity from multi-round tables
+      query = `
+        SELECT DISTINCT 
+          d.id,
+          d.title_encrypted,
+          d.creator_id,
+          d.status,
+          d.verdict_encrypted,
+          d.created_at,
+          u.name_encrypted as creator_name_encrypted,
+          dp.status as user_participation_status,
+          GREATEST(
+            d.created_at,
+            d.updated_at,
+            COALESCE(MAX(dr.submitted_at), d.created_at),
+            COALESCE(MAX(dv.generated_at), d.created_at),
+            COALESCE(MAX(ps.responded_at), d.created_at)
+          ) as last_activity_at
+        FROM disputes d
+        JOIN users u ON d.creator_id = u.id 
+        JOIN dispute_participants dp ON d.id = dp.dispute_id
+        LEFT JOIN dispute_responses dr ON d.id = dr.dispute_id
+        LEFT JOIN dispute_verdicts dv ON d.id = dv.dispute_id
+        LEFT JOIN participant_satisfaction ps ON d.id = ps.dispute_id
+        WHERE dp.user_id = $1
+        GROUP BY d.id, d.title_encrypted, d.creator_id, d.status, d.verdict_encrypted, 
+                 d.created_at, d.updated_at, u.name_encrypted, dp.status
+        ORDER BY last_activity_at DESC
+      `;
+      params = [user_id];
+    } else {
+      // Old format query - use existing participant response timestamps
+      query = `
+        SELECT DISTINCT 
+          d.id,
+          d.title_encrypted,
+          d.creator_id,
+          d.status,
+          d.verdict_encrypted,
+          d.created_at,
+          u.name_encrypted as creator_name_encrypted,
+          dp.status as user_participation_status,
+          GREATEST(
+            d.created_at,
+            COALESCE(d.updated_at, d.created_at),
+            COALESCE(MAX(dp_responses.response_submitted_at), d.created_at)
+          ) as last_activity_at
+        FROM disputes d
+        JOIN users u ON d.creator_id = u.id 
+        JOIN dispute_participants dp ON d.id = dp.dispute_id
+        LEFT JOIN dispute_participants dp_responses ON d.id = dp_responses.dispute_id 
+          AND dp_responses.response_submitted_at IS NOT NULL
+        WHERE dp.user_id = $1
+        GROUP BY d.id, d.title_encrypted, d.creator_id, d.status, d.verdict_encrypted, 
+                 d.created_at, d.updated_at, u.name_encrypted, dp.status
+        ORDER BY last_activity_at DESC
+      `;
+      params = [user_id];
+    }
+
+    const result = await pool.query(query, params);
 
     // Decrypt the results
     const decryptedDisputes = result.rows.map(row => ({
@@ -288,6 +345,7 @@ const getDisputesByUser = async (user_id, callback) => {
       status: row.status,
       verdict: row.verdict_encrypted ? encryption.decrypt(row.verdict_encrypted) : null,
       created_at: row.created_at,
+      last_activity_at: row.last_activity_at, // ADD THIS LINE
       creator_name: encryption.decrypt(row.creator_name_encrypted),
       user_participation_status: row.user_participation_status
     }));
