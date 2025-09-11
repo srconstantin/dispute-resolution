@@ -65,7 +65,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---fix premature evaluation bug
 
 --allow creator to delete dispute at any time
 
