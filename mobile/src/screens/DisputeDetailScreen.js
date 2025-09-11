@@ -544,7 +544,6 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
             <View style={styles.disputeDetails}>
               <Text style={styles.detailItem}>Created by {dispute.creator_name}</Text>
               <Text style={styles.detailItem}>Round {dispute.current_round || 1}</Text>
-              <Text style={styles.detailItem}>{dispute.status}</Text>
             </View>
           </View>
 
