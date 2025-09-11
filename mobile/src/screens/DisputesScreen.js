@@ -144,9 +144,22 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
   // Helper function to check if dispute has unread content
   const hasUnreadContent = (dispute) => {
     const lastViewed = lastViewedTimes[dispute.id];
+
+    console.log(`🔍 DEBUG - Dispute ${dispute.id} (${dispute.title}):`, {
+      lastViewed: lastViewed ? lastViewed.toISOString() : 'NEVER VIEWED',
+      currentUserId: currentUserId,
+      disputeStatus: dispute.status,
+      hasResponsesByRound: !!dispute.responses_by_round,
+      responsesByRound: dispute.responses_by_round,
+      hasVerdicts: !!dispute.verdicts,
+      verdicts: dispute.verdicts,
+      hasOldVerdict: !!dispute.verdict,
+      oldVerdict: dispute.verdict ? {verdict: dispute.verdict.substring(0, 50) + '...', updated_at: dispute.updated_at} : null
+    });
     
     if (!lastViewed) {
       // If user has never viewed this dispute, check if there's any content
+      console.log(`👀 Never viewed - hasAnyContent: ${hasContent}`);
       return hasAnyContent(dispute);
     }
 
@@ -154,12 +167,22 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
     if (dispute.responses_by_round) {
       for (const round in dispute.responses_by_round) {
         const responses = dispute.responses_by_round[round];
+        console.log(`📝 Checking Round ${round} responses:`, responses);
         for (const response of responses) {
           // Skip user's own responses
           if (response.user_id === currentUserId) continue;
-          
+          console.log(`⏭️ Skipping own response from user ${response.user_id}`);
           const responseDate = new Date(response.submitted_at);
+          console.log(`📅 Other user response:`, {
+            user_id: response.user_id,
+            submitted_at: response.submitted_at,
+            responseDate: responseDate.toISOString(),
+            lastViewed: lastViewed.toISOString(),
+            isAfter: responseDate > lastViewed
+          });
+
           if (responseDate > lastViewed) {
+            console.log(`🚨 FOUND UNREAD RESPONSE!`);
             return true;
           }
         }
@@ -169,8 +192,17 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
     // Check for new verdicts
     if (dispute.verdicts) {
       for (const verdict of dispute.verdicts) {
+        console.log(`⚖️ Checking verdicts:`, dispute.verdicts);
         const verdictDate = new Date(verdict.generated_at);
+        console.log(`📅 Verdict:`, {
+          round: verdict.round_number,
+          generated_at: verdict.generated_at,
+          verdictDate: verdictDate.toISOString(),
+          lastViewed: lastViewed.toISOString(),
+          isAfter: verdictDate > lastViewed
+        });
         if (verdictDate > lastViewed) {
+          console.log(`🚨 FOUND UNREAD VERDICT!`);
           return true;
         }
       }
