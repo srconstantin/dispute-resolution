@@ -54,8 +54,11 @@ export default function DisputesScreen({ navigation, token}) {
     if (status === 'rejected') {
       return styles.rejectedDispute;
     }
-    if (status === 'completed') {
-      return styles.completedDispute;
+    if (status === 'concluded') {
+      return styles.concludedDispute;
+    }
+    if (status === 'evaluated') {
+      return styles.evaluatedDispute;
     }
     if (userParticipationStatus === 'invited') {
       return styles.invitedDispute;
@@ -65,9 +68,11 @@ export default function DisputesScreen({ navigation, token}) {
 
   const getDisputeStatusText = (status, userParticipationStatus) => {
     if (status === 'rejected') return 'Rejected';
-    if (status === 'completed') return 'Completed';
+    if (status === 'concluded') return 'Concluded';
+    if (status === 'evaluated') return 'Evaluated';
+    if (status === 'cancelled') return 'Cancelled';
     if (userParticipationStatus === 'invited') return 'Invited';
-    return 'Ongoing';
+    return 'Incomplete';
   };
 
   const formatDate = (dateString) => {
@@ -229,14 +234,19 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.border,
     ...theme.shadows.small,
   },
-  ongoingDispute: {
+
+  incompleteDispute: {
     borderLeftColor: theme.colors.primary,
   },
   invitedDispute: {
     borderLeftColor: theme.colors.warning,
     backgroundColor: '#FFF9E6',
   },
-  completedDispute: {
+  evaluatedDispute: {
+    borderLeftColor: theme.colors.warning,
+    backgroundColor: '#FFF9E6',
+  },
+  concludedDispute: {
     borderLeftColor: theme.colors.success,
     backgroundColor: '#F0F9F0',
   },
@@ -244,7 +254,7 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.error,
     backgroundColor: '#FFF0F0',
     opacity: 0.7,
-  },
+  },  
   disputeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
