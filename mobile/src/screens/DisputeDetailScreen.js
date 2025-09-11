@@ -537,13 +537,17 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
 
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           
+
           {/* Dispute Header */}
-          <View style={styles.header}>
+          <View style={styles.disputeHeader}>
             <Text style={styles.disputeTitle}>{dispute.title}</Text>
-            <Text style={styles.subtitle}>
-              Created by {dispute.creator_name} • Round {dispute.current_round || 1} • {dispute.status}
-            </Text>
+            <View style={styles.disputeDetails}>
+              <Text style={styles.detailItem}>Created by {dispute.creator_name}</Text>
+              <Text style={styles.detailItem}>Round {dispute.current_round || 1}</Text>
+              <Text style={styles.detailItem}>{dispute.status}</Text>
+            </View>
           </View>
+
 
           {/* Status Summary */}
           <View style={styles.statusSection}>
@@ -926,16 +930,29 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.headingMedium,
     color: theme.colors.text,
   },
+  
   disputeHeader: {
     marginBottom: 24,
+    paddingHorizontal: 4, // Small horizontal padding for better alignment
   },
   disputeTitle: {
     fontSize: 28,
     fontWeight: 'bold',
     fontFamily: theme.fonts.heading,
     color: theme.colors.text,
-    marginBottom: 8,
+    marginBottom: 16, // Increased space between title and details
+    lineHeight: 34, // Better line height for large text
   },
+  disputeDetails: {
+    gap: 6, // Space between each detail line
+  },
+  detailItem: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
+    lineHeight: 22,
+  },
+
   subtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
