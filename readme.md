@@ -65,10 +65,9 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
+--debug back buttons not working
 
---allow creator to delete dispute at any time
-
---fix bug where notifications briefly show up incorrectly and then update to the correct values
+--debug contacts disappearing
 
 --make color coding consistent and fix palette
 
