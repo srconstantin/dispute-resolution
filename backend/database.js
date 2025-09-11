@@ -643,6 +643,21 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
       console.log(`PARTICIPANTS VISIBLE IN THIS TRANSACTION:`, debugParticipants.rows);
 
 
+      // Add this debugging to see the raw rows before the COUNT
+      const debugRows = await client.query(`
+        SELECT 
+          dp.user_id,
+          dp.status,
+          dr.user_id as response_user_id,
+          dr.round_number
+        FROM dispute_participants dp
+        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
+        WHERE dp.dispute_id = $1
+      `, [dispute_id, currentRound]);
+
+console.log(`RAW ROWS FROM COMPLETION QUERY:`, debugRows.rows);
+
+
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
