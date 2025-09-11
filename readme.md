@@ -61,9 +61,9 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --saves login and current page state (so reloads don't logout or redirect the user)
 
-## TODO
+--shows notifications of unread responses or verdicts in your disputes
 
---add notifications for updates to disputes that the user hasn't seen yet
+## TODO
 
 --make color coding consistent and fix palette
 
