@@ -617,6 +617,12 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
           submitted_at = CURRENT_TIMESTAMP
       `, [dispute_id, user_id, currentRound, responseTextEncrypted]);
 
+      console.log(`=== QUERY PARAMETERS DEBUG ===`);
+      console.log(`dispute_id: ${dispute_id} (type: ${typeof dispute_id})`);
+      console.log(`currentRound: ${currentRound} (type: ${typeof currentRound})`);
+      console.log(`Query parameters array:`, [dispute_id, currentRound]);
+      console.log(`===============================`);
+
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
