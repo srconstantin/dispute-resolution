@@ -719,6 +719,22 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
         (roundCompleted && disputeStatus === 'incomplete' ? 'evaluated' : disputeStatus))
     });
 
+    // After your completion check debug, add this:
+    console.log(`=== VERDICT GENERATION CHECK ===`);
+    console.log(`roundCompleted: ${roundCompleted}`); 
+    console.log(`disputeStatus: ${disputeStatus}`);
+    console.log(`hasMultiRoundTables: ${hasMultiRoundTables}`);
+    console.log(`totalAccepted: ${totalAccepted}`);
+    console.log(`responsesSubmitted: ${responsesSubmitted}`);
+
+  const shouldGenerateVerdict = (hasMultiRoundTables ? 
+    (totalAccepted === responsesSubmitted && totalAccepted > 0) : 
+    roundCompleted) && disputeStatus === 'incomplete';
+
+    console.log(`Should generate verdict: ${shouldGenerateVerdict}`);
+    console.log(`Calling generateVerdictForRound? ${shouldGenerateVerdict ? 'YES' : 'NO'}`);
+    console.log(`===============================`);
+
     // If round completed, generate verdict asynchronously
     if ((hasMultiRoundTables ? (totalAccepted === responsesSubmitted && totalAccepted > 0) : roundCompleted) && disputeStatus === 'incomplete') {
       generateVerdictForRound(dispute_id, currentRound);
