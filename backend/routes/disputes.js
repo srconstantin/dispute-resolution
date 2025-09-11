@@ -355,44 +355,10 @@ router.put('/:id/response', authenticateToken, (req, res) => {
     }
 
 
-    // If round is completed, generate verdict immediately
-    if (result.round_completed && result.status === 'evaluated') {
-      try {
-        console.log('Round completed, generating verdict for dispute:', dispute_id, 'round:', result.current_round);
-        await generateVerdictForRound(dispute_id, result.current_round);
-        
-        // Get the generated verdict to return to user
-        getDisputeById(dispute_id, (err, disputeData) => {
-          if (err) {
-            console.error('Error fetching updated dispute:', err);
-            return res.json({ 
-              message: 'Response submitted successfully. Verdict generated but failed to fetch.',
-              result
-            });
-          }
-          
-          const latestVerdict = disputeData.verdicts && disputeData.verdicts.length > 0 ? 
-            disputeData.verdicts.find(v => v.round_number === result.current_round) : null;
-          
-          res.json({ 
-            message: 'Response submitted successfully. All participants have responded - dispute evaluated with verdict!',
-            result,
-            verdict: latestVerdict ? latestVerdict.verdict : null
-          });
-        });
-      } catch (error) {
-        console.error('Error generating verdict:', error);
-        res.json({ 
-          message: 'Response submitted successfully. All participants have responded but verdict generation failed.',
-          result 
-        });
-      }
-    } else {
       res.json({ 
         message: 'Response submitted successfully',
         result
       });
-    }
   });
 });
 
