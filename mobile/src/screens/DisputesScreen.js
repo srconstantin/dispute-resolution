@@ -317,7 +317,9 @@ export default function DisputesScreen({ navigation, token}) {
   const renderDispute = ({ item }) => {
     const statusStyle = getDisputeStatusStyle(item.status, item.user_participation_status);
     const statusText = getDisputeStatusText(item.status, item.user_participation_status);
-    
+    const hasUnread = hasUnreadContent(item);
+    const unreadCount = hasUnread ? getUnreadCount(item) : 0;
+        
     return (
       <TouchableOpacity 
         style={[styles.disputeItem, statusStyle]}
