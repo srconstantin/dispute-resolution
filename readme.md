@@ -65,6 +65,12 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
+--fix premature evaluation bug
+
+--allow creator to delete dispute at any time
+
+--fix bug where notifications briefly show up incorrectly and then update to the correct values
+
 --make color coding consistent and fix palette
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
