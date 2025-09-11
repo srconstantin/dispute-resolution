@@ -927,8 +927,6 @@ const checkAndGenerateNewRoundVerdict = async (dispute_id, round_number) => {
   try {
     // Check if all participants have submitted responses for this round
     const checkResult = await pool.query(`
-
-    const checkResult = await pool.query(`
       SELECT 
         COUNT(CASE WHEN dp.status = 'accepted' THEN 1 END) as total_accepted,
         COUNT(CASE WHEN dp.status = 'accepted' AND dr.user_id IS NOT NULL THEN 1 END) as responses_submitted,
