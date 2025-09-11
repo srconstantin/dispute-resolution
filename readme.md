@@ -65,8 +65,6 @@ Go to https://fairenough.netlify.app/ to use the app
 
 --fix formatting on DisputeDetail page
 
---show correct dispute status on Disputes stage
-
 --make color coding consistent and fix palette
 
 This is a work in progress, with heavy assistance from Claude (Sonnet 4).
