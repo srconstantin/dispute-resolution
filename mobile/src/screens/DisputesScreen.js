@@ -7,19 +7,23 @@ import {
   FlatList,
   SafeAreaView,
   RefreshControl,
-  Alert
+  Alert,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getDisputes } from '../services/api';
 import { theme } from '../styles/theme';
 
+
 export default function DisputesScreen({ navigation, token}) {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [lastViewedTimes, setLastViewedTimes] = useState({});
 
   useEffect(() => {
     loadDisputes();
+    loadLastViewedTimes();
   }, []);
 
 
@@ -27,6 +31,7 @@ export default function DisputesScreen({ navigation, token}) {
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadDisputes();
+      loadLastViewedTimes();
     });
   return unsubscribe;
 }, [navigation]);
@@ -44,11 +49,228 @@ export default function DisputesScreen({ navigation, token}) {
     }
   };
 
+  const loadLastViewedTimes = async () => {
+    const times = {};
+    for (const dispute of disputes) {
+      const timestamp = await Storage.getItem(`dispute_last_viewed_${dispute.id}`);
+      if (timestamp) {
+        times[dispute.id] = new Date(timestamp);
+      }
+    }
+    setLastViewedTimes(times);
+  };
+
+  // Clean up old localStorage entries for disputes that no longer exist
+  const cleanupOldViewedTimes = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        const disputeIds = disputes.map(d => d.id);
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('dispute_last_viewed_')) {
+            const disputeId = key.replace('dispute_last_viewed_', '');
+            if (!disputeIds.includes(parseInt(disputeId))) {
+              localStorage.removeItem(key);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Error cleaning up localStorage:', e);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (disputes.length > 0) {
+      cleanupOldViewedTimes();
+      loadLastViewedTimes();
+    }
+  }, [disputes]);
+
+
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadDisputes();
     setRefreshing(false);
   };
+
+  // Helper function to check if dispute has unread content
+  const hasUnreadContent = (dispute) => {
+    const lastViewed = lastViewedTimes[dispute.id];
+    
+    if (!lastViewed) {
+      // If user has never viewed this dispute, check if there's any content
+      return hasAnyContent(dispute);
+    }
+
+    // Check for new responses from other users
+    if (dispute.responses_by_round) {
+      for (const round in dispute.responses_by_round) {
+        const responses = dispute.responses_by_round[round];
+        for (const response of responses) {
+          // Skip user's own responses
+          if (response.user_id === currentUserId) continue;
+          
+          const responseDate = new Date(response.submitted_at);
+          if (responseDate > lastViewed) {
+            return true;
+          }
+        }
+      }
+    }
+
+    // Check for new verdicts
+    if (dispute.verdicts) {
+      for (const verdict of dispute.verdicts) {
+        const verdictDate = new Date(verdict.generated_at);
+        if (verdictDate > lastViewed) {
+          return true;
+        }
+      }
+    }
+
+    // Fall back to old format
+    if (dispute.verdict && dispute.updated_at) {
+      const verdictDate = new Date(dispute.updated_at);
+      if (verdictDate > lastViewed) {
+        return true;
+      }
+    }
+
+    // Check old format responses
+    if (dispute.participants) {
+      for (const participant of dispute.participants) {
+        if (participant.user_id === currentUserId) continue;
+        if (participant.response_text && participant.response_submitted_at) {
+          const responseDate = new Date(participant.response_submitted_at);
+          if (responseDate > lastViewed) {
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  };
+
+  // Helper function to check if dispute has any content at all
+  const hasAnyContent = (dispute) => {
+    // Check for responses from other users
+    if (dispute.responses_by_round) {
+      for (const round in dispute.responses_by_round) {
+        const responses = dispute.responses_by_round[round];
+        const otherUserResponses = responses.filter(r => r.user_id !== currentUserId);
+        if (otherUserResponses.length > 0) {
+          return true;
+        }
+      }
+    }
+
+    // Check for verdicts
+    if (dispute.verdicts && dispute.verdicts.length > 0) {
+      return true;
+    }
+
+    // Fall back to old format
+    if (dispute.verdict) {
+      return true;
+    }
+
+    // Check for responses from other participants (old format)
+    if (dispute.participants) {
+      const otherParticipants = dispute.participants.filter(p => 
+        p.user_id !== currentUserId && p.response_text
+      );
+      if (otherParticipants.length > 0) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+  const getUnreadCount = (dispute) => {
+    const lastViewed = lastViewedTimes[dispute.id];
+    
+    if (!lastViewed) {
+      // Count all content if never viewed
+      let count = 0;
+      
+      if (dispute.responses_by_round) {
+        for (const round in dispute.responses_by_round) {
+          const responses = dispute.responses_by_round[round];
+          count += responses.filter(r => r.user_id !== currentUserId).length;
+        }
+      }
+      
+      if (dispute.verdicts) {
+        count += dispute.verdicts.length;
+      }
+      
+      // Fall back to old format
+      if (dispute.participants) {
+        count += dispute.participants.filter(p => 
+          p.user_id !== currentUserId && p.response_text
+        ).length;
+      }
+      
+      if (dispute.verdict) {
+        count += 1;
+      }
+      
+      return count;
+    }
+
+    let unreadCount = 0;
+
+    // Count new responses
+    if (dispute.responses_by_round) {
+      for (const round in dispute.responses_by_round) {
+        const responses = dispute.responses_by_round[round];
+        for (const response of responses) {
+          if (response.user_id === currentUserId) continue;
+          
+          const responseDate = new Date(response.submitted_at);
+          if (responseDate > lastViewed) {
+            unreadCount++;
+          }
+        }
+      }
+    }
+
+    // Count new verdicts
+    if (dispute.verdicts) {
+      for (const verdict of dispute.verdicts) {
+        const verdictDate = new Date(verdict.generated_at);
+        if (verdictDate > lastViewed) {
+          unreadCount++;
+        }
+      }
+    }
+
+    // Count old format content
+    if (dispute.verdict && dispute.updated_at) {
+      const verdictDate = new Date(dispute.updated_at);
+      if (verdictDate > lastViewed) {
+        unreadCount++;
+      }
+    }
+
+    if (dispute.participants) {
+      for (const participant of dispute.participants) {
+        if (participant.user_id === currentUserId) continue;
+        if (participant.response_text && participant.response_submitted_at) {
+          const responseDate = new Date(participant.response_submitted_at);
+          if (responseDate > lastViewed) {
+            unreadCount++;
+          }
+        }
+      }
+    }
+
+    return unreadCount;
+  };
+
 
   const getDisputeStatusStyle = (status, userParticipationStatus) => {
     if (status === 'rejected') {
@@ -102,9 +324,20 @@ export default function DisputesScreen({ navigation, token}) {
         onPress={() => handleViewDispute(item.id)}
       >
         <View style={styles.disputeHeader}>
+         <View style={styles.titleContainer}>
           <Text style={styles.disputeTitle} numberOfLines={2}>
             {item.title}
           </Text>
+
+          {hasUnread && (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          )}
+          </View>
+
           <View style={styles.statusBadge}>
             <Text style={styles.statusText}>{statusText}</Text>
           </View>
@@ -118,9 +351,19 @@ export default function DisputesScreen({ navigation, token}) {
             {formatDate(item.created_at)}
           </Text>
         </View>
+
+        {hasUnread && (
+          <View style={styles.unreadIndicator}>
+            <View style={styles.unreadDot} />
+            <Text style={styles.unreadText}>New activity</Text>
+          </View>
+        )}
+
       </TouchableOpacity>
     );
   };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -171,6 +414,8 @@ export default function DisputesScreen({ navigation, token}) {
     </SafeAreaView>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -233,6 +478,90 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.border,
     ...theme.shadows.small,
+  },
+
+ disputeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  titleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginRight: 12,
+  },
+  disputeTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.text,
+    flex: 1,
+  },
+  statusBadge: {
+    backgroundColor: theme.colors.primaryBackground,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
+    color: theme.colors.primary,
+  },
+  disputeInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  creatorText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
+  },
+  dateText: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.body,
+  },
+
+  notificationBadge: {
+    backgroundColor: '#DC2626',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: theme.fonts.headingMedium,
+  },
+  unreadIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
+    marginRight: 6,
+  },
+  unreadText: {
+    fontSize: 12,
+    color: '#DC2626',
+    fontWeight: '600',
+    fontFamily: theme.fonts.headingMedium,
   },
 
   incompleteDispute: {

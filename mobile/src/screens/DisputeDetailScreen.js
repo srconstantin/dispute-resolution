@@ -30,6 +30,54 @@ import { theme } from '../styles/theme';
 import { Toast } from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 
+// Cross-platform storage utility (reuse from App.js)
+const Storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+        return null;
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      return AsyncStorage.getItem(key);
+    }
+  },
+
+  async setItem(key, value) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.setItem(key, value);
+    }
+  },
+
+  async removeItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.removeItem(key);
+    }
+  }
+};
+
+const updateLastViewedTime = async (disputeId) => {
+  const timestamp = new Date().toISOString();
+  await Storage.setItem(`dispute_last_viewed_${disputeId}`, timestamp);
+};
+
 export default function DisputeDetailScreen({ route, navigation, token, currentUserId }) {
   const { disputeId } = route.params;
   const [dispute, setDispute] = useState(null);
@@ -52,6 +100,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
 
   useEffect(() => {
     loadDisputeDetails();
+    updateLastViewedTime(disputeId);
   }, []);
 
   useEffect(() => {
