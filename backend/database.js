@@ -601,6 +601,10 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
     } catch (e) {
       // Tables don't exist yet
     }
+    // Initialize variables that will be used in both code paths
+    let roundCompleted = false;
+    let totalAccepted = 0;
+    let responsesSubmitted = 0;
 
     if (hasMultiRoundTables) {
       // Insert or update response for current round in new table
@@ -623,9 +627,9 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
         WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
       `, [dispute_id, currentRound]);
 
-      const totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
-      const responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
-      const roundCompleted = totalAccepted === responsesSubmitted && totalAccepted > 0;
+      totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
+      responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
+      roundCompleted = totalAccepted === responsesSubmitted && totalAccepted > 0;
 
       // If round is complete and dispute is incomplete, mark as evaluated and generate verdict
       if (roundCompleted && disputeStatus === 'incomplete') {
@@ -657,7 +661,12 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
       const checkData = checkResult.rows[0];
       const allInvitationsResolved = parseInt(checkData.still_invited) === 0;
       const allAcceptedHaveResponded = parseInt(checkData.accepted_not_responded) === 0;
-      const roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && parseInt(checkData.responded_count) > 0;
+      
+     // Set the variables for consistency with new system
+      totalAccepted = parseInt(checkData.responded_count) + parseInt(checkData.accepted_not_responded);
+      responsesSubmitted = parseInt(checkData.responded_count);
+      roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && responsesSubmitted > 0;
+ 
       
       if (roundCompleted && disputeStatus === 'incomplete') {
         await client.query(`
