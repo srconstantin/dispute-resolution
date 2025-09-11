@@ -617,82 +617,7 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
           submitted_at = CURRENT_TIMESTAMP
       `, [dispute_id, user_id, currentRound, responseTextEncrypted]);
 
-      console.log(`=== QUERY PARAMETERS DEBUG ===`);
-      console.log(`dispute_id: ${dispute_id} (type: ${typeof dispute_id})`);
-      console.log(`currentRound: ${currentRound} (type: ${typeof currentRound})`);
-      console.log(`Query parameters array:`, [dispute_id, currentRound]);
-      console.log(`===============================`);
 
-      // Add this right before the completion check query
-      console.log(`=== CONNECTION DEBUG ===`);
-      console.log(`Database URL from app:`, process.env.DATABASE_URL?.substring(0, 50) + '...');
-      console.log(`Client connection info:`, {
-        host: client.host,
-        port: client.port,
-        database: client.database,
-        user: client.user
-      });
-
-      // Check if we can see the participant in THIS transaction
-      const debugParticipants = await client.query(`
-        SELECT user_id, status 
-        FROM dispute_participants 
-        WHERE dispute_id = $1
-        `, [dispute_id]);
-
-      console.log(`PARTICIPANTS VISIBLE IN THIS TRANSACTION:`, debugParticipants.rows);
-
-
-      // Add this debugging to see the raw rows before the COUNT
-      const debugRows = await client.query(`
-        SELECT 
-          dp.user_id,
-          dp.status,
-          dr.user_id as response_user_id,
-          dr.round_number
-        FROM dispute_participants dp
-        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
-        WHERE dp.dispute_id = $1
-      `, [dispute_id, currentRound]);
-
-      console.log(`RAW ROWS FROM COMPLETION QUERY:`, debugRows.rows);
-
-      // Test each COUNT function individually
-      const debugCounts = await client.query(`
-        SELECT 
-          dp.status,
-          CASE WHEN dp.status = 'accepted' THEN 1 END as accepted_case,
-          CASE WHEN dp.status = 'invited' THEN 1 END as invited_case,
-          CASE WHEN dp.status = 'rejected' THEN 1 END as rejected_case
-        FROM dispute_participants dp
-        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
-        WHERE dp.dispute_id = $1
-      `, [dispute_id, currentRound]);
-
-      console.log(`INDIVIDUAL CASE RESULTS:`, debugCounts.rows);
-
-      // Also test just the invited count by itself
-      const invitedTest = await client.query(`
-        SELECT COUNT(*) as total_rows,
-         COUNT(CASE WHEN status = 'invited' THEN 1 END) as invited_count_function,
-         SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as invited_sum_function
-        FROM dispute_participants 
-        WHERE dispute_id = $1
-      `, [dispute_id]);
-
-      console.log(`SIMPLE INVITED TEST:`, invitedTest.rows[0]);
-
-      // Run the EXACT failing query as a separate debug test
-      const exactSameQuery = await client.query(`
-        SELECT 
-          COUNT(CASE WHEN dp.status = 'accepted' THEN 1 END) as total_accepted,
-          COUNT(CASE WHEN dp.status = 'accepted' AND dr.user_id IS NOT NULL THEN 1 END) as responses_submitted,
-          COUNT(CASE WHEN dp.status = 'invited' THEN 1 END) as still_invited,
-          COUNT(CASE WHEN dp.status = 'rejected' THEN 1 END) as rejected_count
-        FROM dispute_participants dp
-        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
-        WHERE dp.dispute_id = $1
-      `, [dispute_id, currentRound]);
 
         console.log(`EXACT SAME QUERY DEBUG TEST:`, exactSameQuery.rows[0]);
      // Check if all accepted participants have submitted responses for current round
@@ -704,7 +629,7 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
           COUNT(CASE WHEN dp.status = 'rejected' THEN 1 END) as rejected_count
         FROM dispute_participants dp
         LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
-        WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
+        WHERE dp.dispute_id = $1 
       `, [dispute_id, currentRound]);
 
       console.log(`RAW SQL RESULT:`, JSON.stringify(completionCheck.rows[0], null, 2));
