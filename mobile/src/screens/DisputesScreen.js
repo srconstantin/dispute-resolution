@@ -393,9 +393,11 @@ export default function DisputesScreen({ navigation, token, currentUserId}) {
   };  
 
   const renderDispute = ({ item }) => {
+    console.log("🎨 renderDispute called for:", item.id); // Add this line
     const statusStyle = getDisputeStatusStyle(item.status, item.user_participation_status);
     const statusText = getDisputeStatusText(item.status, item.user_participation_status);
     const hasUnread = hasUnreadContent(item);
+    console.log("📋 hasUnread result:", hasUnread); // Add this line
     const unreadCount = hasUnread ? getUnreadCount(item) : 0;
 
     return (
