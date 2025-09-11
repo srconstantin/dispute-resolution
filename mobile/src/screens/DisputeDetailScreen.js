@@ -209,9 +209,25 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   };
 
   const handleDeleteDispute = async () => {
+    const hasResponses = dispute.participants.some(p => 
+      p.user_id !== currentUserId && (p.response_text || p.status === 'accepted')
+    );
+  
+    const hasResponsesInRounds = dispute.responses_by_round && 
+      Object.values(dispute.responses_by_round).some(roundResponses => 
+        roundResponses.some(r => r.user_id !== currentUserId)
+      );
+
+    const isActiveDispute = hasResponses || hasResponsesInRounds || 
+      dispute.status === 'evaluated' || dispute.status === 'incomplete';
+
+    const warningMessage = isActiveDispute 
+     ? 'This dispute has active participants and/or responses. Deleting it will permanently remove all data and notify participants that the dispute has been cancelled. This action cannot be undone.'
+      : 'Are you sure you want to delete this dispute? This will permanently remove the dispute and all associated data. This action cannot be undone.';
+
     showConfirmDialog(
       'Delete Dispute',
-      'Are you sure you want to delete this dispute? This will permanently remove the dispute and all associated data. This action cannot be undone.',
+      warningMessage,
       async () => {
         try {
           setSubmitting(true);
@@ -223,11 +239,10 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
         } finally {
           setSubmitting(false);
         }
-      },
+     },
       'Delete'
     );
   };
-
   const handleLeaveDispute = async () => {
     showConfirmDialog(
       'Leave Dispute',
@@ -550,7 +565,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
   const isCreator = dispute.creator_id === currentUserId;
   const isInvited = currentUserParticipant?.status === 'invited';
   const isAccepted = currentUserParticipant?.status === 'accepted';
-  const canDelete = isCreator && dispute.status !== 'evaluated' && dispute.status !== 'concluded';
+  const canDelete = isCreator;
   const canLeave = !isCreator && isAccepted && dispute.status === 'incomplete';
   const canInvite = isCreator && dispute.status === 'incomplete';
 
