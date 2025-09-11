@@ -655,7 +655,32 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
         WHERE dp.dispute_id = $1
       `, [dispute_id, currentRound]);
 
-console.log(`RAW ROWS FROM COMPLETION QUERY:`, debugRows.rows);
+      console.log(`RAW ROWS FROM COMPLETION QUERY:`, debugRows.rows);
+
+      // Test each COUNT function individually
+      const debugCounts = await client.query(`
+        SELECT 
+          dp.status,
+          CASE WHEN dp.status = 'accepted' THEN 1 END as accepted_case,
+          CASE WHEN dp.status = 'invited' THEN 1 END as invited_case,
+          CASE WHEN dp.status = 'rejected' THEN 1 END as rejected_case
+        FROM dispute_participants dp
+        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
+        WHERE dp.dispute_id = $1
+      `, [dispute_id, currentRound]);
+
+      console.log(`INDIVIDUAL CASE RESULTS:`, debugCounts.rows);
+
+      // Also test just the invited count by itself
+      const invitedTest = await client.query(`
+        SELECT COUNT(*) as total_rows,
+         COUNT(CASE WHEN status = 'invited' THEN 1 END) as invited_count_function,
+         SUM(CASE WHEN status = 'invited' THEN 1 ELSE 0 END) as invited_sum_function
+        FROM dispute_participants 
+        WHERE dispute_id = $1
+      `, [dispute_id]);
+
+      console.log(`SIMPLE INVITED TEST:`, invitedTest.rows[0]);
 
 
      // Check if all accepted participants have submitted responses for current round
