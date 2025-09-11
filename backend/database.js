@@ -682,7 +682,19 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
 
       console.log(`SIMPLE INVITED TEST:`, invitedTest.rows[0]);
 
+      // Run the EXACT failing query as a separate debug test
+      const exactSameQuery = await client.query(`
+        SELECT 
+          COUNT(CASE WHEN dp.status = 'accepted' THEN 1 END) as total_accepted,
+          COUNT(CASE WHEN dp.status = 'accepted' AND dr.user_id IS NOT NULL THEN 1 END) as responses_submitted,
+          COUNT(CASE WHEN dp.status = 'invited' THEN 1 END) as still_invited,
+          COUNT(CASE WHEN dp.status = 'rejected' THEN 1 END) as rejected_count
+        FROM dispute_participants dp
+        LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
+        WHERE dp.dispute_id = $1
+      `, [dispute_id, currentRound]);
 
+        console.log(`EXACT SAME QUERY DEBUG TEST:`, exactSameQuery.rows[0]);
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
