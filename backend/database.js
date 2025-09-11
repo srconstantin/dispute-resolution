@@ -623,6 +623,16 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
       console.log(`Query parameters array:`, [dispute_id, currentRound]);
       console.log(`===============================`);
 
+      // Add this right before the completion check query
+      console.log(`=== CONNECTION DEBUG ===`);
+      console.log(`Database URL from app:`, process.env.DATABASE_URL?.substring(0, 50) + '...');
+      console.log(`Client connection info:`, {
+        host: client.host,
+        port: client.port,
+        database: client.database,
+        user: client.user
+      });
+
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
