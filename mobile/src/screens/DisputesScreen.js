@@ -14,8 +14,52 @@ import { Ionicons } from '@expo/vector-icons';
 import { getDisputes } from '../services/api';
 import { theme } from '../styles/theme';
 
+// Cross-platform storage utility (reuse from App.js)
+const Storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        return localStorage.getItem(key);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+        return null;
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      return AsyncStorage.getItem(key);
+    }
+  },
 
-export default function DisputesScreen({ navigation, token}) {
+  async setItem(key, value) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.setItem(key, value);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.setItem(key, value);
+    }
+  },
+
+  async removeItem(key) {
+    if (Platform.OS === 'web') {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        console.warn('localStorage not available:', e);
+      }
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.removeItem(key);
+    }
+  }
+};
+
+
+
+export default function DisputesScreen({ navigation, token, currentUserId}) {
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -319,7 +363,7 @@ export default function DisputesScreen({ navigation, token}) {
     const statusText = getDisputeStatusText(item.status, item.user_participation_status);
     const hasUnread = hasUnreadContent(item);
     const unreadCount = hasUnread ? getUnreadCount(item) : 0;
-        
+
     return (
       <TouchableOpacity 
         style={[styles.disputeItem, statusStyle]}

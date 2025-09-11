@@ -105,6 +105,7 @@ export default function DisputeDetailScreen({ route, navigation, token, currentU
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      updateLastViewedTime(disputeId);
       loadDisputeDetails();
     });
     return unsubscribe;

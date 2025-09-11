@@ -204,7 +204,7 @@ const linking = {
             </Stack.Screen>
             <Stack.Screen name="Disputes">
               {(props) => (
-                <DisputesScreen {...props} token={token} />
+                <DisputesScreen {...props} token={token} currentUserId={user?.id} />
               )}
             </Stack.Screen>
             <Stack.Screen name="CreateDispute">
