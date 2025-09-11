@@ -636,8 +636,8 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
       console.log(`Raw still_invited value:`, completionCheck.rows[0].still_invited);
       console.log(`Type of still_invited:`, typeof completionCheck.rows[0].still_invited);
 
-      const totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
-      const responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
+      totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
+      responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
       const stillInvited = parseInt(completionCheck.rows[0].still_invited);
       const rejectedCount = parseInt(completionCheck.rows[0].rejected_count);
 
@@ -648,7 +648,7 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
       // 3. There's at least one response
       const allInvitationsResolved = stillInvited === 0;
       const allAcceptedHaveResponded = totalAccepted === responsesSubmitted;
-      const roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && responsesSubmitted > 0;
+      roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && responsesSubmitted > 0;
 
       console.log(`=== COMPLETION CHECK DEBUG ===`);
       console.log(`Dispute ${dispute_id}, Round ${currentRound}:`);
