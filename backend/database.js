@@ -620,16 +620,39 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
-          COUNT(*) as total_accepted,
-          COUNT(dr.user_id) as responses_submitted
+          COUNT(CASE WHEN dp.status = 'accepted' THEN 1 END) as total_accepted,
+          COUNT(CASE WHEN dp.status = 'accepted' AND dr.user_id IS NOT NULL THEN 1 END) as responses_submitted,
+          COUNT(CASE WHEN dp.status = 'invited' THEN 1 END) as still_invited,
+          COUNT(CASE WHEN dp.status = 'rejected' THEN 1 END) as rejected_count
         FROM dispute_participants dp
         LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
         WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
       `, [dispute_id, currentRound]);
 
-      totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
-      responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
-      roundCompleted = totalAccepted === responsesSubmitted && totalAccepted > 0;
+      const totalAccepted = parseInt(completionCheck.rows[0].total_accepted);
+      const responsesSubmitted = parseInt(completionCheck.rows[0].responses_submitted);
+      const stillInvited = parseInt(completionCheck.rows[0].still_invited);
+      const rejectedCount = parseInt(completionCheck.rows[0].rejected_count);
+
+
+      // Round is only completed when:
+      // 1. No one is still 'invited' (all invitations resolved)
+      // 2. All accepted participants have responded
+      // 3. There's at least one response
+      const allInvitationsResolved = stillInvited === 0;
+      const allAcceptedHaveResponded = totalAccepted === responsesSubmitted;
+      const roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && responsesSubmitted > 0;
+
+      console.log(`=== COMPLETION CHECK DEBUG ===`);
+      console.log(`Dispute ${dispute_id}, Round ${currentRound}:`);
+      console.log(`- Total accepted: ${totalAccepted}`);
+      console.log(`- Responses submitted: ${responsesSubmitted}`);
+      console.log(`- Still invited: ${stillInvited}`);
+      console.log(`- Rejected: ${rejectedCount}`);
+      console.log(`- All invitations resolved: ${allInvitationsResolved}`);
+      console.log(`- All accepted have responded: ${allAcceptedHaveResponded}`);
+      console.log(`- Round completed: ${roundCompleted}`);
+      console.log(`===============================`);
 
       // If round is complete and dispute is incomplete, mark as evaluated and generate verdict
       if (roundCompleted && disputeStatus === 'incomplete') {
@@ -904,18 +927,41 @@ const checkAndGenerateNewRoundVerdict = async (dispute_id, round_number) => {
   try {
     // Check if all participants have submitted responses for this round
     const checkResult = await pool.query(`
+
+    const checkResult = await pool.query(`
       SELECT 
-        COUNT(dp.user_id) as total_accepted,
-        COUNT(dr.user_id) as responses_submitted
+        COUNT(CASE WHEN dp.status = 'accepted' THEN 1 END) as total_accepted,
+        COUNT(CASE WHEN dp.status = 'accepted' AND dr.user_id IS NOT NULL THEN 1 END) as responses_submitted,
+        COUNT(CASE WHEN dp.status = 'invited' THEN 1 END) as still_invited,
+        COUNT(CASE WHEN dp.status = 'rejected' THEN 1 END) as rejected_count
       FROM dispute_participants dp
       LEFT JOIN dispute_responses dr ON (dp.dispute_id = dr.dispute_id AND dp.user_id = dr.user_id AND dr.round_number = $2)
-      WHERE dp.dispute_id = $1 AND dp.status = 'accepted'
+      WHERE dp.dispute_id = $1
     `, [dispute_id, round_number]);
 
     const totalAccepted = parseInt(checkResult.rows[0].total_accepted);
     const responsesSubmitted = parseInt(checkResult.rows[0].responses_submitted);
+    const stillInvited = parseInt(checkResult.rows[0].still_invited);
 
-    if (totalAccepted === responsesSubmitted && totalAccepted > 0) {
+    // Round is only completed when:
+    // 1. No one is still 'invited' (all invitations resolved)
+    // 2. All accepted participants have responded
+    // 3. There's at least one response
+    const allInvitationsResolved = stillInvited === 0;
+    const allAcceptedHaveResponded = totalAccepted === responsesSubmitted;
+    const roundCompleted = allInvitationsResolved && allAcceptedHaveResponded && responsesSubmitted > 0;
+
+    console.log(`=== NEW ROUND VERDICT CHECK ===`);
+    console.log(`Dispute ${dispute_id}, Round ${round_number}:`);
+    console.log(`- Total accepted: ${totalAccepted}`);
+    console.log(`- Responses submitted: ${responsesSubmitted}`);
+    console.log(`- Still invited: ${stillInvited}`);
+    console.log(`- All invitations resolved: ${allInvitationsResolved}`);
+    console.log(`- All accepted have responded: ${allAcceptedHaveResponded}`);
+    console.log(`- Round completed: ${roundCompleted}`);
+    console.log(`===============================`);
+
+    if (roundCompleted) {
       // Update dispute status to evaluated
       await pool.query(`
         UPDATE disputes 
