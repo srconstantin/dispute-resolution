@@ -63,7 +63,7 @@ Go to https://fairenough.netlify.app/ to use the app
 
 ## TODO
 
---fix formatting on DisputeDetail page
+--add notifications for updates to disputes that the user hasn't seen yet
 
 --make color coding consistent and fix palette
 
