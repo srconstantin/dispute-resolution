@@ -619,7 +619,7 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
 
 
 
-        console.log(`EXACT SAME QUERY DEBUG TEST:`, exactSameQuery.rows[0]);
+
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
