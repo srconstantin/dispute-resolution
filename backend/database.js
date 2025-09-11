@@ -633,6 +633,16 @@ const submitDisputeResponse = async (dispute_id, user_id, response_text, callbac
         user: client.user
       });
 
+      // Check if we can see the participant in THIS transaction
+      const debugParticipants = await client.query(`
+        SELECT user_id, status 
+        FROM dispute_participants 
+        WHERE dispute_id = $1
+        `, [dispute_id]);
+
+      console.log(`PARTICIPANTS VISIBLE IN THIS TRANSACTION:`, debugParticipants.rows);
+
+
      // Check if all accepted participants have submitted responses for current round
       const completionCheck = await client.query(`
         SELECT 
